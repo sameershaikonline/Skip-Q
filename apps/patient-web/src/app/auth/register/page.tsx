@@ -130,7 +130,7 @@ export default function RegisterPage() {
       } else if (err.code === 'auth/invalid-phone-number') {
         msg = `Invalid E.164 phone number: ${formattedPhone}. Please check your 10-digit mobile number.`;
       } else if (err.code === 'auth/too-many-requests') {
-        msg = 'Too many attempts from this IP/device. Please wait a few minutes before retrying.';
+        msg = `This phone number (${formattedPhone}) has been rate-limited by Firebase due to too many failed attempts. Fix: Go to Firebase Console → Authentication → Sign-in method → Phone → "Phone numbers for testing" → add ${formattedPhone} with code 123456. Or try a different number.`;
       } else if (err.message) {
         msg = `Firebase Error (${err.code || 'unknown'}): ${err.message}`;
       }
