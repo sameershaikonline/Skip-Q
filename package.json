@@ -1,0 +1,28 @@
+{
+  "name": "project-son-antigravity",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Multi-Tenant Healthcare Platform (Zomato for Hospitals)",
+  "packageManager": "npm@11.16.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "turbo dev",
+    "start": "turbo start",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "clean": "turbo clean",
+    "db:generate": "npm run --prefix packages/database db:generate",
+    "db:push": "npm run --prefix packages/database db:push",
+    "db:seed": "npm run --prefix packages/database db:seed"
+  },
+  "devDependencies": {
+    "turbo": "^2.0.0",
+    "typescript": "^5.4.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
