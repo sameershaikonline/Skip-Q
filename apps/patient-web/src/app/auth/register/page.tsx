@@ -22,8 +22,6 @@ export default function RegisterPage() {
   const [step, setStep] = useState<'DETAILS' | 'OTP'>('DETAILS');
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
   const [resendTimer, setResendTimer] = useState(0);
-  const [sentOtpBanner, setSentOtpBanner] = useState<string | null>(null);
-  const [authMode, setAuthMode] = useState<'FIREBASE' | 'BACKEND'>('FIREBASE');
 
   // Countdown timer for resend
   useEffect(() => {
@@ -36,7 +34,6 @@ export default function RegisterPage() {
     e.preventDefault();
     setLoading(true);
     setError('');
-    setSentOtpBanner(null);
 
     if (!name.trim()) {
       setError('Please enter your full name.');
@@ -53,7 +50,6 @@ export default function RegisterPage() {
 
     const formattedPhone = `+91${cleanDigits}`;
 
-    // Step 1: Try Firebase Phone Auth first
     try {
       const container = document.getElementById('recaptcha-container');
       if (container) container.innerHTML = '';
@@ -66,34 +62,21 @@ export default function RegisterPage() {
       await verifier.render();
       const result = await signInWithPhoneNumber(auth, formattedPhone, verifier);
       setConfirmationResult(result);
-      setAuthMode('FIREBASE');
       setStep('OTP');
       setResendTimer(60);
-      setLoading(false);
-      return;
-    } catch (firebaseErr: any) {
-      console.warn('Firebase Phone Auth unavailable or billing disabled. Switching to Backend OTP Service:', firebaseErr);
-    }
-
-    // Step 2: Fallback to Backend OTP Service (guaranteed 100% success on Vercel)
-    try {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000';
-      const res = await fetch(`${backendUrl}/api/auth/register/patient`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, phone: formattedPhone, password: 'patient123' }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Registration failed.');
-
-      setAuthMode('BACKEND');
-      setStep('OTP');
-      setResendTimer(60);
-      if (data.otp) setSentOtpBanner(data.otp);
     } catch (err: any) {
-      console.error('Backend registration error:', err);
-      setError(err.message || 'Failed to send OTP. Please try again.');
+      console.error('Firebase Phone Auth Error:', err);
+      let msg = 'Failed to send SMS OTP. Please try again.';
+      if (err.code === 'auth/billing-not-enabled') {
+        msg = `Firebase billing not linked to project sameerqrcode. To fix: Add ${formattedPhone} under Firebase Console ➔ Authentication ➔ Sign-in method ➔ Phone ➔ "Phone numbers for testing" (test code: 123456).`;
+      } else if (err.code === 'auth/unauthorized-domain') {
+        msg = 'Domain not authorized. Add "online-hospital-appointment-patient.vercel.app" in Firebase Console ➔ Authentication ➔ Settings ➔ Authorized Domains.';
+      } else if (err.code === 'auth/invalid-app-credential') {
+        msg = 'reCAPTCHA verification reset. Click Send Mobile SMS OTP again.';
+      } else if (err.message) {
+        msg = err.message;
+      }
+      setError(msg);
     } finally {
       setLoading(false);
     }
@@ -101,15 +84,19 @@ export default function RegisterPage() {
 
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!confirmationResult) return;
     setLoading(true);
     setError('');
 
-    const cleanDigits = phone.replace(/\D/g, '');
-    const formattedPhone = `+91${cleanDigits}`;
+    try {
+      // 1. Verify OTP with Firebase
+      await confirmationResult.confirm(otpCode);
 
-    if (authMode === 'FIREBASE' && confirmationResult) {
+      const cleanDigits = phone.replace(/\D/g, '');
+      const formattedPhone = `+91${cleanDigits}`;
+
+      // 2. Register / login patient on NestJS backend if backend is reachable
       try {
-        await confirmationResult.confirm(otpCode);
         const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000';
         const res = await fetch(`${backendUrl}/api/auth/register/patient`, {
           method: 'POST',
@@ -129,36 +116,24 @@ export default function RegisterPage() {
             if (verifyData.user) localStorage.setItem('user', JSON.stringify(verifyData.user));
           }
         }
-        router.push('/dashboard');
-        return;
-      } catch (err: any) {
-        console.error('Firebase OTP confirm error:', err);
-        setError(err.message || 'Invalid OTP code.');
-        setLoading(false);
-        return;
+      } catch (backendErr) {
+        console.warn('Backend API offline or unreachable, storing local session:', backendErr);
+        localStorage.setItem('token', `firebase_session_${Date.now()}`);
+        localStorage.setItem('user', JSON.stringify({ name, phone: formattedPhone, role: 'PATIENT' }));
       }
-    }
 
-    // Backend OTP Verification
-    try {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000';
-      const res = await fetch(`${backendUrl}/api/auth/verify-otp`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: formattedPhone, otp: otpCode }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Invalid OTP code.');
-
-      if (data.token) {
-        localStorage.setItem('token', data.token);
-        if (data.user) localStorage.setItem('user', JSON.stringify(data.user));
-        router.push('/dashboard');
-      }
+      router.push('/dashboard');
     } catch (err: any) {
-      console.error('Backend OTP verify error:', err);
-      setError(err.message || 'Invalid 6-digit OTP code.');
+      console.error('Firebase OTP verify error:', err);
+      let msg = 'Invalid 6-digit OTP code. Please check your SMS and try again.';
+      if (err.code === 'auth/invalid-verification-code') {
+        msg = 'Incorrect OTP entered. Please check your SMS inbox.';
+      } else if (err.code === 'auth/code-expired') {
+        msg = 'OTP code expired. Please request a new OTP.';
+      } else if (err.message) {
+        msg = err.message;
+      }
+      setError(msg);
     } finally {
       setLoading(false);
     }
@@ -171,7 +146,6 @@ export default function RegisterPage() {
     setError('');
     setStep('DETAILS');
     setConfirmationResult(null);
-    setSentOtpBanner(null);
   };
 
   return (
@@ -190,30 +164,15 @@ export default function RegisterPage() {
           </h1>
           <p className="text-xs text-slate-400">
             {step === 'DETAILS'
-              ? 'Enter your mobile number to receive a 6-digit verification OTP'
-              : `OTP dispatched to +91 ${phone}`}
+              ? 'Enter your mobile number to receive Firebase SMS OTP'
+              : `Firebase SMS OTP sent to +91 ${phone}`}
           </p>
         </div>
 
-        {/* Error */}
+        {/* Error Notification */}
         {error && (
           <div className="p-4 bg-rose-500/10 border border-rose-500/30 rounded-2xl text-xs text-rose-400 font-semibold text-center leading-relaxed">
             {error}
-          </div>
-        )}
-
-        {/* Sent OTP Banner for Seamless User Flow */}
-        {step === 'OTP' && sentOtpBanner && (
-          <div className="p-4 bg-teal-500/10 border border-teal-500/30 rounded-2xl text-center space-y-1">
-            <div className="text-[11px] font-bold text-teal-400 uppercase tracking-wider">
-              📲 SMS Verification Code
-            </div>
-            <div className="text-2xl font-mono font-black text-teal-300 tracking-[0.2em]">
-              {sentOtpBanner}
-            </div>
-            <div className="text-[10px] text-slate-400">
-              Enter code above or check your mobile SMS inbox
-            </div>
           </div>
         )}
 
