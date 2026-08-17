@@ -22,6 +22,7 @@ export default function RegisterPage() {
   const [step, setStep] = useState<'DETAILS' | 'OTP'>('DETAILS');
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
   const [resendTimer, setResendTimer] = useState(0);
+  const [useVisibleRecaptcha, setUseVisibleRecaptcha] = useState(false);
 
   // Countdown timer for resend
   useEffect(() => {
@@ -29,6 +30,56 @@ export default function RegisterPage() {
     const interval = setInterval(() => setResendTimer((t) => t - 1), 1000);
     return () => clearInterval(interval);
   }, [resendTimer]);
+
+  /**
+   * Point 1: Strict E.164 Phone Formatting (+91XXXXXXXXXX)
+   * Strips spaces, dashes, leading 0s, and country code prefixes to guarantee a valid 10-digit Indian number.
+   */
+  const formatE164Phone = (rawPhone: string): string => {
+    // Strip all non-digit characters
+    let digits = rawPhone.replace(/\D/g, '');
+    // If user pasted +91 or 91 at start and length is 12 digits, strip country code
+    if (digits.startsWith('91') && digits.length === 12) {
+      digits = digits.slice(2);
+    }
+    // Strip any leading zeros
+    digits = digits.replace(/^0+/, '');
+    // Extract exact last 10 digits
+    const tenDigits = digits.slice(-10);
+    return `+91${tenDigits}`;
+  };
+
+  /**
+   * Point 3: reCAPTCHA Enterprise Initialization
+   * Supports both Invisible & Visible reCAPTCHA widget rendering to bypass carrier/domain spam restrictions.
+   */
+  const getRecaptchaVerifier = async (): Promise<RecaptchaVerifier> => {
+    const container = document.getElementById('recaptcha-container');
+    if (container) container.innerHTML = '';
+
+    if (window.recaptchaVerifier) {
+      try { window.recaptchaVerifier.clear(); } catch {}
+      window.recaptchaVerifier = undefined;
+    }
+
+    const verifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+      size: useVisibleRecaptcha ? 'normal' : 'invisible',
+      callback: (response: any) => {
+        console.log('reCAPTCHA solved successfully:', response);
+      },
+      'expired-callback': () => {
+        setError('reCAPTCHA expired. Please try again or toggle visible reCAPTCHA.');
+        if (window.recaptchaVerifier) {
+          try { window.recaptchaVerifier.clear(); } catch {}
+          window.recaptchaVerifier = undefined;
+        }
+      },
+    });
+
+    await verifier.render();
+    window.recaptchaVerifier = verifier;
+    return verifier;
+  };
 
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,40 +92,47 @@ export default function RegisterPage() {
       return;
     }
 
-    const cleanDigits = phone.replace(/\D/g, '');
+    const cleanDigits = phone.replace(/\D/g, '').replace(/^0+/, '').slice(-10);
     if (cleanDigits.length !== 10) {
       setError('Please enter a valid 10-digit Indian mobile number.');
       setLoading(false);
       return;
     }
 
-    const formattedPhone = `+91${cleanDigits}`;
+    // Point 1: Strict E.164 formatting
+    const formattedPhone = formatE164Phone(phone);
+    console.log('Initiating Firebase Phone Auth for E.164 number:', formattedPhone);
 
     try {
-      const container = document.getElementById('recaptcha-container');
-      if (container) container.innerHTML = '';
-
-      const verifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-        size: 'invisible',
-        callback: () => {},
-      });
-
-      await verifier.render();
+      const verifier = await getRecaptchaVerifier();
+      
+      // Point 2: Trigger Firebase Phone Auth & capture full error details
       const result = await signInWithPhoneNumber(auth, formattedPhone, verifier);
       setConfirmationResult(result);
       setStep('OTP');
       setResendTimer(60);
     } catch (err: any) {
-      console.error('Firebase Phone Auth Error:', err);
-      let msg = 'Failed to send SMS OTP. Please try again.';
+      // Point 2: Detailed inspection of error code & response payload
+      console.error('Firebase Phone Auth Error Payload:', {
+        code: err.code,
+        message: err.message,
+        customData: err.customData,
+      });
+
+      let msg = 'Failed to send SMS OTP. Please check your network or try again.';
       if (err.code === 'auth/billing-not-enabled') {
-        msg = `Firebase billing not linked to project sameerqrcode. To fix: Add ${formattedPhone} under Firebase Console ➔ Authentication ➔ Sign-in method ➔ Phone ➔ "Phone numbers for testing" (test code: 123456).`;
+        msg = `Firebase billing not linked. To test instantly on Vercel: Add ${formattedPhone} under Firebase Console ➔ Authentication ➔ Phone ➔ "Phone numbers for testing" (test code: 123456).`;
       } else if (err.code === 'auth/unauthorized-domain') {
-        msg = 'Domain not authorized. Add "online-hospital-appointment-patient.vercel.app" in Firebase Console ➔ Authentication ➔ Settings ➔ Authorized Domains.';
-      } else if (err.code === 'auth/invalid-app-credential') {
-        msg = 'reCAPTCHA verification reset. Click Send Mobile SMS OTP again.';
+        msg = 'Domain not authorized. Add "online-hospital-appointment-patient.vercel.app" under Firebase Console ➔ Authentication ➔ Settings ➔ Authorized Domains.';
+      } else if (err.code === 'auth/invalid-app-credential' || err.code === 'auth/captcha-check-failed') {
+        msg = 'reCAPTCHA verification failed. Switch to Visible reCAPTCHA below and try again.';
+        setUseVisibleRecaptcha(true);
+      } else if (err.code === 'auth/invalid-phone-number') {
+        msg = `Invalid E.164 phone number: ${formattedPhone}. Please check your 10-digit mobile number.`;
+      } else if (err.code === 'auth/too-many-requests') {
+        msg = 'Too many attempts from this IP/device. Please wait a few minutes before retrying.';
       } else if (err.message) {
-        msg = err.message;
+        msg = `Firebase Error (${err.code || 'unknown'}): ${err.message}`;
       }
       setError(msg);
     } finally {
@@ -89,13 +147,12 @@ export default function RegisterPage() {
     setError('');
 
     try {
-      // 1. Verify OTP with Firebase
+      // 1. Verify OTP code with Firebase
       await confirmationResult.confirm(otpCode);
 
-      const cleanDigits = phone.replace(/\D/g, '');
-      const formattedPhone = `+91${cleanDigits}`;
+      const formattedPhone = formatE164Phone(phone);
 
-      // 2. Register / login patient on NestJS backend if backend is reachable
+      // 2. Register/sync user on NestJS backend
       try {
         const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000';
         const res = await fetch(`${backendUrl}/api/auth/register/patient`, {
@@ -117,19 +174,19 @@ export default function RegisterPage() {
           }
         }
       } catch (backendErr) {
-        console.warn('Backend API offline or unreachable, storing local session:', backendErr);
+        console.warn('Backend API offline or unreachable, saving local session:', backendErr);
         localStorage.setItem('token', `firebase_session_${Date.now()}`);
         localStorage.setItem('user', JSON.stringify({ name, phone: formattedPhone, role: 'PATIENT' }));
       }
 
       router.push('/dashboard');
     } catch (err: any) {
-      console.error('Firebase OTP verify error:', err);
-      let msg = 'Invalid 6-digit OTP code. Please check your SMS and try again.';
+      console.error('Firebase OTP Verification Error Payload:', err);
+      let msg = 'Invalid 6-digit OTP code. Please check your SMS inbox and try again.';
       if (err.code === 'auth/invalid-verification-code') {
-        msg = 'Incorrect OTP entered. Please check your SMS inbox.';
+        msg = 'Incorrect OTP entered. Please check the 6-digit code sent to your phone.';
       } else if (err.code === 'auth/code-expired') {
-        msg = 'OTP code expired. Please request a new OTP.';
+        msg = 'OTP code expired. Please click Resend OTP.';
       } else if (err.message) {
         msg = err.message;
       }
@@ -142,6 +199,10 @@ export default function RegisterPage() {
   const handleResend = () => {
     const container = document.getElementById('recaptcha-container');
     if (container) container.innerHTML = '';
+    if (window.recaptchaVerifier) {
+      try { window.recaptchaVerifier.clear(); } catch {}
+      window.recaptchaVerifier = undefined;
+    }
     setOtpCode('');
     setError('');
     setStep('DETAILS');
@@ -150,9 +211,6 @@ export default function RegisterPage() {
 
   return (
     <div className="max-w-md mx-auto my-12 px-4 space-y-6">
-      {/* Invisible reCAPTCHA container */}
-      <div id="recaptcha-container" />
-
       <div className="bg-slate-900 p-8 rounded-3xl border border-slate-800 shadow-xl space-y-6">
         {/* Header */}
         <div className="text-center space-y-2">
@@ -164,12 +222,12 @@ export default function RegisterPage() {
           </h1>
           <p className="text-xs text-slate-400">
             {step === 'DETAILS'
-              ? 'Enter your mobile number to receive Firebase SMS OTP'
-              : `Firebase SMS OTP sent to +91 ${phone}`}
+              ? 'Enter your mobile number to receive a 6-digit SMS OTP'
+              : `Firebase SMS OTP sent to ${formatE164Phone(phone || '7285943263')}`}
           </p>
         </div>
 
-        {/* Error Notification */}
+        {/* Error Alert Box */}
         {error && (
           <div className="p-4 bg-rose-500/10 border border-rose-500/30 rounded-2xl text-xs text-rose-400 font-semibold text-center leading-relaxed">
             {error}
@@ -208,6 +266,24 @@ export default function RegisterPage() {
                 />
               </div>
             </div>
+
+            {/* Point 3: reCAPTCHA Widget Container */}
+            <div className="flex justify-center my-2">
+              <div id="recaptcha-container" />
+            </div>
+
+            {/* Point 3 Toggle: Switch between Invisible and Visible reCAPTCHA */}
+            <div className="flex items-center justify-between text-[11px] text-slate-400 px-1">
+              <span>reCAPTCHA Mode:</span>
+              <button
+                type="button"
+                onClick={() => setUseVisibleRecaptcha(!useVisibleRecaptcha)}
+                className="text-teal-400 hover:underline font-semibold"
+              >
+                {useVisibleRecaptcha ? '👁️ Visible Widget' : '⚡ Invisible (Default)'}
+              </button>
+            </div>
+
             <button
               id="send-otp-btn"
               type="submit"
@@ -231,7 +307,7 @@ export default function RegisterPage() {
         {step === 'OTP' && (
           <form onSubmit={handleVerifyOtp} className="space-y-5">
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-3 text-center">
+              <label className="block text-xs font-semibold text-slate-300 mb-2 text-center">
                 Enter 6-Digit Verification OTP
               </label>
               <input
@@ -247,6 +323,12 @@ export default function RegisterPage() {
                 className="w-full p-4 bg-slate-950 border border-teal-500/40 rounded-xl text-center font-mono text-2xl text-teal-400 tracking-[0.5em] focus:outline-none focus:border-teal-400 placeholder-slate-700 transition-colors"
               />
             </div>
+
+            {/* Point 4: Carrier Spam & DLT Helpful Tip */}
+            <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl text-[11px] text-slate-400 leading-relaxed text-center">
+              💡 <strong className="text-slate-300">Didn't receive SMS?</strong> Check your mobile Messages app <strong>Spam & Blocked folder</strong> (TRAI/DLT carrier rules in India sometimes filter international SMS).
+            </div>
+
             <button
               id="verify-otp-btn"
               type="submit"
