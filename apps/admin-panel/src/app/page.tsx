@@ -38,7 +38,8 @@ export default function AdminDashboardPage() {
   // Fetch Hospitals from backend
   const fetchHospitals = () => {
     setLoading(true);
-    fetch('http://localhost:4000/api/hospitals')
+    const backend = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000';
+    fetch(`${backend}/api/hospitals`)
       .then((res) => res.json())
       .then((data) => {
         if (Array.isArray(data)) setHospitals(data);
@@ -63,7 +64,8 @@ export default function AdminDashboardPage() {
     }
 
     try {
-      const res = await fetch('http://localhost:4000/api/admin/onboard-hospital', {
+      const backend = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000';
+      const res = await fetch(`${backend}/api/admin/onboard-hospital`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newHospital),
@@ -99,7 +101,8 @@ export default function AdminDashboardPage() {
 
   const handleStatusChange = async (id: string, newStatus: 'APPROVED' | 'REJECTED' | 'SUSPENDED') => {
     try {
-      await fetch(`http://localhost:4000/api/admin/hospitals/${id}/status`, {
+      const backend = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000';
+      const res = await fetch(`${backend}/api/admin/hospitals/${id}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus }),

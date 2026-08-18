@@ -26,7 +26,8 @@ export default function HospitalDashboardPage() {
     }
 
     setLoading(true);
-    fetch('http://localhost:4000/api/appointments/hospital-appointments', {
+    const backend = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000';
+    fetch(`${backend}/api/appointments/hospital-appointments`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((res) => {
@@ -62,7 +63,8 @@ export default function HospitalDashboardPage() {
     if (!token) return;
 
     try {
-      await fetch(`http://localhost:4000/api/appointments/${appointmentId}/status`, {
+      const backend = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000';
+      await fetch(`${backend}/api/appointments/${appointmentId}/status`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
