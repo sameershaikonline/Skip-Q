@@ -31,10 +31,22 @@ export default function HospitalDashboardPage() {
   const [manualTokenInput, setManualTokenInput] = useState<string>('');
   const [updating, setUpdating] = useState(false);
 
+  const [hospitalName, setHospitalName] = useState('Hospital Management');
+  const [hospitalEmail, setHospitalEmail] = useState('');
+
   const fetchHospitalData = async () => {
     const token = localStorage.getItem('hospital_token');
-    const hospitalId = localStorage.getItem('hospital_id') || 'hosp_active';
+    if (!token) {
+      router.push('/auth/login');
+      return;
+    }
 
+    const savedName = localStorage.getItem('hospital_name');
+    const savedEmail = localStorage.getItem('hospital_email');
+    if (savedName) setHospitalName(savedName);
+    if (savedEmail) setHospitalEmail(savedEmail);
+
+    const hospitalId = localStorage.getItem('hospital_id') || 'hosp_active';
     const backend = process.env.NEXT_PUBLIC_BACKEND_URL;
     const apptsUrl = backend
       ? `${backend}/api/appointments/hospital-appointments`
@@ -42,21 +54,19 @@ export default function HospitalDashboardPage() {
 
     try {
       const res = await fetch(apptsUrl, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data)) setAppointments(data);
       }
     } catch {
-      // Fallback local appointments
       const raw = localStorage.getItem('my_appointments');
       if (raw) {
         try { setAppointments(JSON.parse(raw)); } catch {}
       }
     }
 
-    // Fetch hospital profile to get active currentLiveToken
     const hospUrl = backend ? `${backend}/api/hospitals/${hospitalId}` : `/api/hospitals/${hospitalId}`;
     try {
       const res = await fetch(hospUrl);
@@ -73,6 +83,11 @@ export default function HospitalDashboardPage() {
   };
 
   useEffect(() => {
+    const token = localStorage.getItem('hospital_token');
+    if (!token) {
+      router.push('/auth/login');
+      return;
+    }
     fetchHospitalData();
     const interval = setInterval(fetchHospitalData, 5000);
     return () => clearInterval(interval);
@@ -125,6 +140,8 @@ export default function HospitalDashboardPage() {
   const handleLogout = () => {
     localStorage.removeItem('hospital_token');
     localStorage.removeItem('hospital_id');
+    localStorage.removeItem('hospital_name');
+    localStorage.removeItem('hospital_email');
     router.push('/auth/login');
   };
 
@@ -135,10 +152,13 @@ export default function HospitalDashboardPage() {
         <div>
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-            <h1 className="text-2xl font-black text-white">Hospital Reception Queue Controller</h1>
+            <h1 className="text-2xl font-black text-white">{hospitalName}</h1>
+            <span className="px-2.5 py-0.5 bg-emerald-500/20 text-emerald-400 text-[10px] font-bold rounded-md border border-emerald-500/30">
+              Verified Reception Desk
+            </span>
           </div>
           <p className="text-slate-400 text-xs mt-1">
-            {hospital?.name || 'Hospital Reception Desk'} • Update live tokens as patients enter the doctor's room.
+            {hospitalEmail ? `Logged in as: ${hospitalEmail}` : 'Hospital Reception Operations'} • Update live tokens as patients enter the doctor's room.
           </p>
         </div>
 
