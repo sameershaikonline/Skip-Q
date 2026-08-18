@@ -38,7 +38,9 @@ export default function ManageDoctorsPage() {
     }
 
     setLoading(true);
-    fetch('http://localhost:4000/api/hospitals/my-doctors', {
+    const backend = process.env.NEXT_PUBLIC_BACKEND_URL;
+    const url = backend ? `${backend}/api/hospitals/my-doctors` : '/api/hospitals/my-doctors';
+    fetch(url, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((res) => {
@@ -52,7 +54,14 @@ export default function ManageDoctorsPage() {
         if (Array.isArray(data)) setDoctors(data);
         else setDoctors([]);
       })
-      .catch(() => setDoctors([]))
+      .catch(() => {
+        const raw = localStorage.getItem('hospital_doctors');
+        if (raw) {
+          try { setDoctors(JSON.parse(raw)); } catch {}
+        } else {
+          setDoctors([]);
+        }
+      })
       .finally(() => setLoading(false));
   };
 
@@ -70,7 +79,9 @@ export default function ManageDoctorsPage() {
     setFormError('');
 
     try {
-      const res = await fetch('http://localhost:4000/api/hospitals/doctors', {
+      const backend = process.env.NEXT_PUBLIC_BACKEND_URL;
+      const url = backend ? `${backend}/api/hospitals/doctors` : '/api/hospitals/doctors';
+      const res = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
