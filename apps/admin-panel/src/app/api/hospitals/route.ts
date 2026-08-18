@@ -1,9 +1,8 @@
 import { NextResponse } from 'next/server';
-import { getAdminHospitals } from '@/lib/store';
+import { fetchAllHospitals } from '@/lib/cloudStore';
 
 export async function GET() {
-  const store = getAdminHospitals();
-  const list = Array.from(store.values());
+  const list = await fetchAllHospitals();
   return NextResponse.json(list, {
     headers: {
       'Access-Control-Allow-Origin': '*',
