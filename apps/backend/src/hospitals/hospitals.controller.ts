@@ -47,4 +47,10 @@ export class HospitalsController {
   async findOne(@Param('id') id: string) {
     return this.hospitalsService.findOne(id);
   }
+
+  @UseGuards(AuthGuard('jwt'))
+  @Post(':id/live-token')
+  async updateLiveToken(@Param('id') id: string, @Body('liveToken') liveToken: string) {
+    return this.hospitalsService.updateLiveToken(id, liveToken);
+  }
 }

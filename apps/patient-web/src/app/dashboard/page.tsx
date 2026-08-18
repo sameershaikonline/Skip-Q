@@ -12,40 +12,22 @@ interface TokenInfo {
 
 interface Appointment {
   id: string;
+  hospitalId?: string;
   appointmentDate: string;
   timeSlot: string;
   status: string;
   totalFee: number;
-  hospital?: { name?: string; address?: string };
+  hospital?: { id?: string; name?: string; address?: string; currentLiveToken?: string };
   department?: { name?: string };
   doctor?: { name?: string; roomNo?: string };
   token?: TokenInfo;
 }
 
-const DEFAULT_SAMPLE_APPOINTMENT: Appointment = {
-  id: 'appt-demo-1',
-  appointmentDate: new Date().toISOString().split('T')[0],
-  timeSlot: '10:00 AM - 10:30 AM',
-  status: 'IN_QUEUE',
-  totalFee: 500,
-  hospital: {
-    name: 'District Government Area Hospital',
-    address: 'Station Road, Beside Collectorate, Mahabubabad',
-  },
-  department: { name: 'General Medicine' },
-  doctor: { name: 'Dr. K. Sridhar MD', roomNo: 'OPD Room 4' },
-  token: {
-    tokenNumber: 'TK-14',
-    queuePosition: 3,
-    estimatedWaitMinutes: 12,
-    status: 'IN_QUEUE',
-  },
-};
-
 export default function PatientDashboard() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [userName, setUserName] = useState('Patient');
+  const [liveHospitalToken, setLiveHospitalToken] = useState<number>(10);
 
   const loadAppointments = () => {
     try {
@@ -74,22 +56,35 @@ export default function PatientDashboard() {
           if (Array.isArray(data) && data.length > 0) {
             setAppointments(data);
           } else {
-            setAppointments(localList.length > 0 ? localList : [DEFAULT_SAMPLE_APPOINTMENT]);
+            setAppointments(localList);
           }
         })
-        .catch(() => {
-          setAppointments(localList.length > 0 ? localList : [DEFAULT_SAMPLE_APPOINTMENT]);
-        })
+        .catch(() => setAppointments(localList))
         .finally(() => setLoading(false));
     } else {
-      setAppointments(localList.length > 0 ? localList : [DEFAULT_SAMPLE_APPOINTMENT]);
+      setAppointments(localList);
       setLoading(false);
     }
+
+    // Check active hospital's live token
+    const activeAppt = localList[0];
+    const hospitalId = activeAppt?.hospitalId || 'hosp_active';
+    const hospUrl = backend ? `${backend}/api/hospitals/${hospitalId}` : `/api/hospitals/${hospitalId}`;
+
+    fetch(hospUrl)
+      .then((res) => res.json())
+      .then((hData) => {
+        if (hData && hData.currentLiveToken) {
+          setLiveHospitalToken(Number(hData.currentLiveToken));
+        }
+      })
+      .catch(() => {});
   };
 
   useEffect(() => {
     loadAppointments();
-    const interval = setInterval(loadAppointments, 6000);
+    // Poll every 3 seconds to ensure instant receptionist call updates
+    const interval = setInterval(loadAppointments, 3000);
     return () => clearInterval(interval);
   }, []);
 
@@ -100,9 +95,11 @@ export default function PatientDashboard() {
     localStorage.setItem('my_appointments', JSON.stringify(updated));
   };
 
-  const activeAppointment = appointments.find(
-    (a) => a.status === 'BOOKED' || a.status === 'IN_QUEUE' || a.status === 'IN_CONSULTATION'
-  );
+  const activeAppointment = appointments[0];
+  const myTokenNum = Number(activeAppointment?.token?.tokenNumber || '14');
+  const isMyTurn = myTokenNum === liveHospitalToken;
+  const isAlreadyServed = myTokenNum < liveHospitalToken;
+  const patientsAhead = Math.max(0, myTokenNum - liveHospitalToken);
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 pb-20">
@@ -116,7 +113,7 @@ export default function PatientDashboard() {
             </span>
           </div>
           <p className="text-slate-400 text-xs mt-1">
-            Real-time OPD token queue tracker and medical consultation history.
+            Real-time OPD token queue tracker — automatically updated by hospital receptionists.
           </p>
         </div>
         <Link
@@ -127,9 +124,15 @@ export default function PatientDashboard() {
         </Link>
       </div>
 
-      {/* Zomato-Style Live Token Queue Tracker */}
+      {/* RECEPTIONIST SYNCHRONIZED LIVE TOKEN TRACKER */}
       {activeAppointment && (
-        <div className="relative rounded-3xl p-6 sm:p-8 bg-gradient-to-r from-slate-900 via-teal-950/50 to-slate-900 border border-teal-500/40 shadow-2xl space-y-6">
+        <div
+          className={`relative rounded-3xl p-6 sm:p-8 border shadow-2xl space-y-6 transition-all ${
+            isMyTurn
+              ? 'bg-gradient-to-r from-emerald-950 via-teal-900 to-slate-950 border-emerald-400/80 shadow-emerald-500/20 animate-pulse'
+              : 'bg-gradient-to-r from-slate-900 via-teal-950/50 to-slate-900 border-teal-500/40'
+          }`}
+        >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <span className="relative flex h-3 w-3">
@@ -137,84 +140,69 @@ export default function PatientDashboard() {
                 <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
               </span>
               <span className="text-xs font-black text-emerald-400 uppercase tracking-widest">
-                Live OPD Queue Status • Real-Time Tracking
+                {isMyTurn ? '🚨 URGENT: IT IS YOUR TURN NOW!' : 'Live Reception OPD Sync Active'}
               </span>
             </div>
             <span className="text-[11px] text-teal-300 font-mono font-bold bg-teal-500/10 px-3 py-1 rounded-full border border-teal-500/30">
-              ⚡ Auto-Sync Active
+              ● Live Sync: Every 3s
             </span>
           </div>
 
+          {/* Callout Message when it's patient turn */}
+          {isMyTurn && (
+            <div className="p-4 bg-emerald-500/20 border-2 border-emerald-400 rounded-2xl text-center space-y-1">
+              <h3 className="text-lg font-black text-white">
+                📢 TOKEN #{myTokenNum} CALLED TO DOCTOR ROOM!
+              </h3>
+              <p className="text-xs text-emerald-200">
+                Please proceed directly to {activeAppointment.doctor?.roomNo || 'OPD Room 4'} for your consultation.
+              </p>
+            </div>
+          )}
+
           {/* 3 Metric Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
-            <div className="bg-slate-950/80 p-5 rounded-2xl border border-teal-500/30 shadow-inner">
-              <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider block">YOUR TOKEN NUMBER</span>
+            {/* Live Token in Room */}
+            <div className="bg-slate-950/90 p-5 rounded-2xl border border-indigo-500/50 shadow-inner">
+              <span className="text-[10px] text-indigo-400 uppercase font-bold tracking-wider block">
+                CURRENTLY IN DOCTOR ROOM
+              </span>
+              <span className="text-4xl font-mono font-black text-indigo-300 tracking-wider">
+                Token #{liveHospitalToken}
+              </span>
+              <span className="text-[10px] text-slate-400 block mt-1">Updated by hospital receptionist</span>
+            </div>
+
+            {/* Patient Token Number */}
+            <div className="bg-slate-950/90 p-5 rounded-2xl border border-teal-500/50 shadow-inner">
+              <span className="text-[10px] text-teal-400 uppercase font-bold tracking-wider block">
+                YOUR ASSIGNED TOKEN
+              </span>
               <span className="text-4xl font-mono font-black text-teal-300 tracking-wider">
-                {activeAppointment.token?.tokenNumber || 'TK-14'}
+                Token #{myTokenNum}
               </span>
-              <span className="text-[10px] text-slate-500 block mt-1">Show token at hospital counter</span>
+              <span className="text-[10px] text-slate-400 block mt-1">Slot: {activeAppointment.timeSlot}</span>
             </div>
 
-            <div className="bg-slate-950/80 p-5 rounded-2xl border border-slate-800">
-              <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider block">CURRENT QUEUE POSITION</span>
+            {/* Queue Status */}
+            <div className="bg-slate-950/90 p-5 rounded-2xl border border-slate-800">
+              <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider block">
+                QUEUE STATUS
+              </span>
               <span className="text-4xl font-mono font-black text-amber-400">
-                #{activeAppointment.token?.queuePosition || 3}
+                {isMyTurn ? 'ENTER ROOM' : isAlreadyServed ? 'COMPLETED' : `${patientsAhead} Ahead`}
               </span>
               <span className="text-[10px] text-slate-400 block mt-1">
-                {(activeAppointment.token?.queuePosition || 3) - 1} patients ahead of you
+                {isMyTurn ? 'Active now' : isAlreadyServed ? 'Consultation completed' : `~${patientsAhead * 5} mins estimated wait`}
               </span>
-            </div>
-
-            <div className="bg-slate-950/80 p-5 rounded-2xl border border-slate-800">
-              <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider block">ESTIMATED WAIT TIME</span>
-              <span className="text-4xl font-mono font-black text-sky-400">
-                ~{activeAppointment.token?.estimatedWaitMinutes || 12} mins
-              </span>
-              <span className="text-[10px] text-slate-400 block mt-1">
-                Slot: {activeAppointment.timeSlot}
-              </span>
-            </div>
-          </div>
-
-          {/* 4-Stage Visual Progress Bar */}
-          <div className="space-y-3 pt-2">
-            <div className="grid grid-cols-4 text-center text-[11px] font-bold">
-              <span className={activeAppointment.status === 'BOOKED' || activeAppointment.status === 'IN_QUEUE' ? 'text-teal-400' : 'text-slate-500'}>
-                1. Token Booked ✓
-              </span>
-              <span className={activeAppointment.status === 'IN_QUEUE' ? 'text-teal-400 animate-pulse' : 'text-slate-500'}>
-                2. In Waiting Area
-              </span>
-              <span className={activeAppointment.status === 'IN_CONSULTATION' ? 'text-emerald-400 font-black animate-bounce' : 'text-slate-500'}>
-                3. Called to Counter 📢
-              </span>
-              <span className={activeAppointment.status === 'COMPLETED' ? 'text-teal-400' : 'text-slate-500'}>
-                4. Consultation Done
-              </span>
-            </div>
-
-            <div className="w-full bg-slate-950 h-3.5 rounded-full overflow-hidden p-0.5 border border-slate-800 shadow-inner">
-              <div
-                className="bg-gradient-to-r from-teal-500 via-emerald-400 to-teal-300 h-full rounded-full transition-all duration-700 shadow-lg shadow-teal-500/40"
-                style={{
-                  width:
-                    activeAppointment.status === 'BOOKED'
-                      ? '25%'
-                      : activeAppointment.status === 'IN_QUEUE'
-                      ? '50%'
-                      : activeAppointment.status === 'IN_CONSULTATION'
-                      ? '75%'
-                      : '100%',
-                }}
-              />
             </div>
           </div>
 
           {/* Hospital & Doctor Details Box */}
-          <div className="p-4 bg-slate-950/70 rounded-2xl border border-slate-800 flex flex-col sm:flex-row justify-between items-start sm:items-center text-xs gap-3">
+          <div className="p-4 bg-slate-950/80 rounded-2xl border border-slate-800 flex flex-col sm:flex-row justify-between items-start sm:items-center text-xs gap-3">
             <div>
               <p className="font-bold text-white text-sm">
-                🏥 {activeAppointment.hospital?.name}
+                🏥 {activeAppointment.hospital?.name || 'District Government Area Hospital'}
               </p>
               <p className="text-slate-400 text-[11px] mt-0.5">
                 👨‍⚕️ {activeAppointment.doctor?.name || 'Dr. K. Sridhar MD'} • {activeAppointment.doctor?.roomNo || 'OPD Room 4'} • {activeAppointment.department?.name || 'General OPD'}
@@ -244,7 +232,7 @@ export default function PatientDashboard() {
             <span className="text-4xl block">🎫</span>
             <h3 className="text-base font-bold text-white">No Active OPD Tokens</h3>
             <p className="text-xs text-slate-400 max-w-sm mx-auto">
-              Find verified hospitals in Mahabubabad and book a digital token to skip the queue.
+              Find registered hospitals in Mahabubabad and book your digital token to track live queue numbers.
             </p>
             <Link
               href="/"
@@ -255,41 +243,47 @@ export default function PatientDashboard() {
           </div>
         ) : (
           <div className="space-y-3">
-            {appointments.map((appt) => (
-              <div
-                key={appt.id}
-                className="p-5 bg-slate-900 rounded-2xl border border-slate-800 hover:border-slate-700 transition-all flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3"
-              >
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="px-2.5 py-0.5 text-xs font-mono font-black bg-teal-500/20 text-teal-400 border border-teal-500/30 rounded-lg">
-                      {appt.token?.tokenNumber || 'TK-14'}
-                    </span>
-                    <span className="text-xs font-bold text-slate-300">
-                      {appt.department?.name || 'General OPD'}
+            {appointments.map((appt) => {
+              const tokenNum = Number(appt.token?.tokenNumber || '14');
+              const isServing = tokenNum === liveHospitalToken;
+              const isDone = tokenNum < liveHospitalToken;
+
+              return (
+                <div
+                  key={appt.id}
+                  className="p-5 bg-slate-900 rounded-2xl border border-slate-800 hover:border-slate-700 transition-all flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3"
+                >
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="px-2.5 py-0.5 text-xs font-mono font-black bg-teal-500/20 text-teal-400 border border-teal-500/30 rounded-lg">
+                        Token #{tokenNum}
+                      </span>
+                      <span className="text-xs font-bold text-slate-300">
+                        {appt.department?.name || 'General OPD'}
+                      </span>
+                    </div>
+                    <h3 className="text-base font-bold text-white">{appt.hospital?.name}</h3>
+                    <p className="text-xs text-slate-400">
+                      📅 Date: {appt.appointmentDate} • Slot: {appt.timeSlot} • Fee: {appt.totalFee === 0 ? 'FREE' : `₹${appt.totalFee}`}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <span
+                      className={`px-3 py-1 text-xs font-bold rounded-full border ${
+                        isServing
+                          ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30 animate-pulse'
+                          : isDone
+                          ? 'bg-slate-800 text-slate-400 border-slate-700'
+                          : 'bg-teal-500/10 text-teal-400 border-teal-500/30'
+                      }`}
+                    >
+                      {isServing ? '● IN DOCTOR ROOM NOW' : isDone ? 'COMPLETED' : '● WAITING IN QUEUE'}
                     </span>
                   </div>
-                  <h3 className="text-base font-bold text-white">{appt.hospital?.name}</h3>
-                  <p className="text-xs text-slate-400">
-                    📅 Date: {appt.appointmentDate} • Slot: {appt.timeSlot} • Fee: {appt.totalFee === 0 ? 'FREE' : `₹${appt.totalFee}`}
-                  </p>
                 </div>
-
-                <div className="flex items-center gap-3">
-                  <span
-                    className={`px-3 py-1 text-xs font-bold rounded-full border ${
-                      appt.status === 'IN_CONSULTATION'
-                        ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
-                        : appt.status === 'COMPLETED'
-                        ? 'bg-slate-800 text-slate-400 border-slate-700'
-                        : 'bg-teal-500/10 text-teal-400 border-teal-500/30'
-                    }`}
-                  >
-                    {appt.status === 'IN_QUEUE' ? '● In Queue' : appt.status}
-                  </span>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

@@ -165,6 +165,21 @@ export class HospitalsService {
     });
   }
 
+  async updateLiveToken(hospitalId: string, liveToken: string) {
+    const hospital = await this.prisma.hospital.findUnique({
+      where: { id: hospitalId },
+    });
+
+    if (!hospital) {
+      throw new NotFoundException('Hospital not found');
+    }
+
+    return this.prisma.hospital.update({
+      where: { id: hospitalId },
+      data: { currentLiveToken: String(liveToken) },
+    });
+  }
+
   async getHospitalDoctors(hospitalId: string) {
     return this.prisma.doctor.findMany({
       where: { hospitalId },

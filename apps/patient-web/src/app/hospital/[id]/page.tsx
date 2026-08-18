@@ -27,52 +27,10 @@ interface HospitalDetail {
   openHours?: string;
   isEmergency?: boolean;
   isGovernment?: boolean;
+  currentLiveToken?: string;
   departments?: Array<{ id: string; name: string }>;
   doctors?: Doctor[];
 }
-
-const SAMPLE_DOCTORS: Doctor[] = [
-  {
-    id: 'doc-1',
-    name: 'Dr. K. Sridhar MD (Gen Med)',
-    specialization: 'General Physician & Diabetologist',
-    qualification: 'MBBS, MD - Osmania Medical College',
-    experience: '14+ Years Experience',
-    roomNo: 'OPD Room 4 (Ground Floor)',
-    fee: 500,
-    availableTime: '09:00 AM - 01:30 PM',
-  },
-  {
-    id: 'doc-2',
-    name: 'Dr. P. Ramesh Babu MS (Ortho)',
-    specialization: 'Senior Orthopedic Surgeon',
-    qualification: 'MBBS, MS (Ortho), DNB',
-    experience: '18+ Years Experience',
-    roomNo: 'OPD Room 7 (1st Floor)',
-    fee: 500,
-    availableTime: '10:00 AM - 02:00 PM',
-  },
-  {
-    id: 'doc-3',
-    name: 'Dr. M. Anitha Reddy MD (Pediatrics)',
-    specialization: 'Child Specialist & Neonatologist',
-    qualification: 'MBBS, MD (Pediatrics)',
-    experience: '10+ Years Experience',
-    roomNo: 'OPD Room 2 (Ground Floor)',
-    fee: 450,
-    availableTime: '09:30 AM - 01:00 PM',
-  },
-  {
-    id: 'doc-4',
-    name: 'Dr. V. Madhavi Latha DGO',
-    specialization: 'Consultant Gynecologist',
-    qualification: 'MBBS, DGO - Gandhi Medical College',
-    experience: '12+ Years Experience',
-    roomNo: 'OPD Room 5 (1st Floor)',
-    fee: 500,
-    availableTime: '10:30 AM - 03:00 PM',
-  },
-];
 
 export default function HospitalDetailPage() {
   const params = useParams();
@@ -81,7 +39,7 @@ export default function HospitalDetailPage() {
 
   const [hospital, setHospital] = useState<HospitalDetail | null>(null);
   const [loading, setLoading] = useState(true);
-  const [selectedDoctor, setSelectedDoctor] = useState<Doctor>(SAMPLE_DOCTORS[0]);
+  const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedTimeSlot, setSelectedTimeSlot] = useState('10:00 AM - 10:30 AM');
   const [patientName, setPatientName] = useState('');
@@ -96,6 +54,30 @@ export default function HospitalDetailPage() {
     timeSlot: string;
   } | null>(null);
 
+  const fetchHospitalDetails = () => {
+    if (!hospitalId) return;
+    const backend = process.env.NEXT_PUBLIC_BACKEND_URL;
+    const url = backend ? `${backend}/api/hospitals/${hospitalId}` : `/api/hospitals/${hospitalId}`;
+
+    fetch(url)
+      .then((res) => {
+        if (!res.ok) throw new Error('Hospital not found');
+        return res.json();
+      })
+      .then((data) => {
+        if (data && data.name) {
+          setHospital(data);
+          if (data.doctors && data.doctors.length > 0 && !selectedDoctor) {
+            setSelectedDoctor(data.doctors[0]);
+          }
+        } else {
+          setHospital(null);
+        }
+      })
+      .catch(() => setHospital(null))
+      .finally(() => setLoading(false));
+  };
+
   useEffect(() => {
     // Preload user name if logged in
     try {
@@ -106,64 +88,10 @@ export default function HospitalDetailPage() {
       }
     } catch {}
 
-    const backend = process.env.NEXT_PUBLIC_BACKEND_URL;
-    if (backend && hospitalId && !hospitalId.startsWith('hosp-')) {
-      fetch(`${backend}/api/hospitals/${hospitalId}`)
-        .then((res) => res.json())
-        .then((data) => {
-          if (data && data.name) {
-            setHospital({
-              ...data,
-              doctors: data.doctors?.length ? data.doctors : SAMPLE_DOCTORS,
-            });
-            if (data.doctors?.length) setSelectedDoctor(data.doctors[0]);
-          } else {
-            loadFallback();
-          }
-        })
-        .catch(loadFallback)
-        .finally(() => setLoading(false));
-    } else {
-      loadFallback();
-      setLoading(false);
-    }
+    fetchHospitalDetails();
+    const interval = setInterval(fetchHospitalDetails, 5000); // Live poll to sync active token updates from receptionist
+    return () => clearInterval(interval);
   }, [hospitalId]);
-
-  const loadFallback = () => {
-    let name = 'District Government Area Hospital';
-    let address = 'Station Road, Beside Collectorate';
-    if (hospitalId === 'hosp-2') {
-      name = 'City Care Multispecialty Hospital';
-      address = 'Main Bazar Road, Near Gandhi Center';
-    } else if (hospitalId === 'hosp-3') {
-      name = 'Sanjeevani Mother & Child Hospital';
-      address = 'Bypass Road, Opp. RTC Bus Station';
-    } else if (hospitalId === 'hosp-4') {
-      name = 'Sri Krishna Orthopedic & Trauma Center';
-      address = 'Nehru Center, Court Road';
-    }
-
-    setHospital({
-      id: hospitalId || 'hosp-1',
-      name,
-      address,
-      city: 'Mahabubabad',
-      contactNumber: '+91 8719 252001',
-      email: 'opd@hospital.com',
-      rating: 4.8,
-      openHours: '24/7 Emergency & Daily OPD (08:30 AM - 02:00 PM)',
-      isEmergency: true,
-      isGovernment: hospitalId === 'hosp-1',
-      doctors: SAMPLE_DOCTORS,
-      departments: [
-        { id: 'd1', name: 'General Medicine' },
-        { id: 'd2', name: 'Orthopedics' },
-        { id: 'd3', name: 'Pediatrics' },
-        { id: 'd4', name: 'Gynecology' },
-      ],
-    });
-    setSelectedDoctor(SAMPLE_DOCTORS[0]);
-  };
 
   const handleBookToken = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -182,44 +110,46 @@ export default function HospitalDetailPage() {
 
     setBookingLoading(true);
 
-    const generatedTokenNum = `TK-${Math.floor(100 + Math.random() * 900)}`;
-    const randomQueuePos = Math.floor(2 + Math.random() * 5);
+    const generatedTokenNum = String(Math.floor(10 + Math.random() * 50));
+    const currentServingNum = Number(hospital?.currentLiveToken || '1');
+    const queueAhead = Math.max(1, Number(generatedTokenNum) - currentServingNum);
 
     try {
       const backend = process.env.NEXT_PUBLIC_BACKEND_URL;
-      if (backend) {
-        await fetch(`${backend}/api/appointments`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            hospitalId,
-            doctorId: selectedDoctor.id,
-            appointmentDate: selectedDate,
-            timeSlot: selectedTimeSlot,
-            patientName,
-          }),
-        });
-      }
+      const url = backend ? `${backend}/api/appointments` : '/api/appointments';
+
+      await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          hospitalId,
+          doctorId: selectedDoctor?.id || 'doc_1',
+          appointmentDate: selectedDate,
+          timeSlot: selectedTimeSlot,
+          patientName,
+          tokenNumber: generatedTokenNum,
+        }),
+      });
     } catch (err) {
-      console.warn('Backend offline, using client-side generated token session:', err);
+      console.warn('Backend offline, using client session:', err);
     }
 
-    // Save active token locally for instant dashboard queue tracking
     const newAppointment = {
       id: `appt_${Date.now()}`,
+      hospitalId,
       appointmentDate: selectedDate,
       timeSlot: selectedTimeSlot,
       status: 'IN_QUEUE',
-      totalFee: selectedDoctor.fee,
+      totalFee: selectedDoctor?.fee || 300,
       hospital: { name: hospital?.name, address: hospital?.address },
-      department: { name: selectedDoctor.specialization },
+      department: { name: selectedDoctor?.specialization || 'General OPD' },
       token: {
         tokenNumber: generatedTokenNum,
-        queuePosition: randomQueuePos,
-        estimatedWaitMinutes: randomQueuePos * 4,
+        queuePosition: queueAhead,
+        estimatedWaitMinutes: queueAhead * 5,
         status: 'IN_QUEUE',
       },
     };
@@ -230,22 +160,40 @@ export default function HospitalDetailPage() {
 
     setConfirmedToken({
       tokenNumber: generatedTokenNum,
-      queuePosition: randomQueuePos,
-      estimatedWait: `${randomQueuePos * 4} mins`,
-      doctorName: selectedDoctor.name,
+      queuePosition: queueAhead,
+      estimatedWait: `${queueAhead * 5} mins`,
+      doctorName: selectedDoctor?.name || 'Duty Doctor',
       timeSlot: selectedTimeSlot,
     });
 
     setBookingLoading(false);
   };
 
-  if (loading || !hospital) {
+  if (loading) {
     return (
       <div className="max-w-4xl mx-auto py-20 px-4 text-center text-xs text-slate-400">
-        Loading hospital details & OPD schedule...
+        Loading hospital profile & live token status...
       </div>
     );
   }
+
+  if (!hospital) {
+    return (
+      <div className="max-w-4xl mx-auto py-20 px-4 text-center space-y-4">
+        <span className="text-4xl block">🏥</span>
+        <h2 className="text-lg font-bold text-white">Hospital Not Found</h2>
+        <p className="text-xs text-slate-400">This hospital is not registered in the system yet.</p>
+        <Link
+          href="/"
+          className="inline-block px-4 py-2 bg-teal-400 text-slate-950 font-bold text-xs rounded-xl"
+        >
+          ← Back to Hospital Directory
+        </Link>
+      </div>
+    );
+  }
+
+  const currentLive = hospital.currentLiveToken || '1';
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8 space-y-8 pb-20">
@@ -262,7 +210,7 @@ export default function HospitalDetailPage() {
                 OPD Token Confirmed
               </span>
               <h2 className="text-4xl font-mono font-black text-white tracking-wider">
-                {confirmedToken.tokenNumber}
+                Token #{confirmedToken.tokenNumber}
               </h2>
               <p className="text-xs text-slate-400">
                 {hospital.name} • {confirmedToken.doctorName}
@@ -271,8 +219,8 @@ export default function HospitalDetailPage() {
 
             <div className="grid grid-cols-2 gap-3 p-4 bg-slate-950 rounded-2xl border border-slate-800 text-left text-xs">
               <div>
-                <span className="text-slate-500 block text-[10px]">CURRENT QUEUE</span>
-                <span className="font-bold text-amber-400 text-sm">#{confirmedToken.queuePosition} in line</span>
+                <span className="text-slate-500 block text-[10px]">CURRENTLY SERVING</span>
+                <span className="font-bold text-teal-400 text-sm">Token #{currentLive}</span>
               </div>
               <div>
                 <span className="text-slate-500 block text-[10px]">ESTIMATED WAIT</span>
@@ -294,13 +242,13 @@ export default function HospitalDetailPage() {
         </div>
       )}
 
-      {/* Hospital Official Banner */}
-      <div className="bg-slate-900 p-8 rounded-3xl border border-slate-800 space-y-5 shadow-xl">
+      {/* Hospital Official Banner with Live Token Badge */}
+      <div className="bg-slate-900 p-8 rounded-3xl border border-slate-800 space-y-6 shadow-xl">
         <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-teal-500/20 text-teal-400 border border-teal-500/30">
-                {hospital.isGovernment ? '🏛️ Government Hospital' : '🏥 Verified Multispecialty'}
+                {hospital.isGovernment ? '🏛️ Govt Hospital' : '🏥 Private Hospital'}
               </span>
               {hospital.isEmergency && (
                 <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30">
@@ -312,10 +260,18 @@ export default function HospitalDetailPage() {
             <p className="text-xs text-slate-400">📍 {hospital.address}, {hospital.city}, Telangana</p>
           </div>
 
-          <div className="text-right">
-            <span className="inline-block text-sm font-bold text-amber-400 bg-amber-500/10 px-3.5 py-1.5 rounded-xl border border-amber-500/20">
-              ★ {hospital.rating || 4.8} / 5.0
-            </span>
+          {/* Live Ongoing Token Callout Box */}
+          <div className="p-4 bg-teal-500/10 border-2 border-teal-500/40 rounded-2xl text-center space-y-1 sm:min-w-[200px]">
+            <div className="flex items-center justify-center gap-1.5 text-[10px] font-bold text-emerald-400 uppercase tracking-wider">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+              LIVE IN DOCTOR ROOM
+            </div>
+            <div className="text-3xl font-mono font-black text-teal-300">
+              Token #{currentLive}
+            </div>
+            <div className="text-[10px] text-slate-400">
+              Updated live by receptionist
+            </div>
           </div>
         </div>
 
@@ -326,35 +282,35 @@ export default function HospitalDetailPage() {
           </div>
           <div>
             <span className="text-slate-500 block text-[11px]">OPD Hours</span>
-            <span className="font-bold text-slate-200">{hospital.openHours || '09:00 AM - 02:00 PM'}</span>
+            <span className="font-bold text-slate-200">{hospital.openHours || '08:00 AM - 02:00 PM'}</span>
           </div>
           <div>
             <span className="text-slate-500 block text-[11px]">Consultation Fee</span>
             <span className="font-bold text-teal-400">{hospital.isGovernment ? 'FREE' : '₹500 / Token'}</span>
           </div>
           <div>
-            <span className="text-slate-500 block text-[11px]">Live Token Counter</span>
-            <span className="font-bold text-emerald-400">● Counter Open</span>
+            <span className="text-slate-500 block text-[11px]">Reception Desk Status</span>
+            <span className="font-bold text-emerald-400">● Live Reception Active</span>
           </div>
         </div>
       </div>
 
-      {/* Main Grid: Doctor Selection & Token Generator */}
+      {/* Main Grid: Doctors List & Fast Token Booking */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Left 2 Cols: Doctors on Duty */}
+        {/* Left 2 Cols: Doctors List */}
         <div className="lg:col-span-2 space-y-5">
           <div>
-            <h2 className="text-lg font-black text-white">Select OPD Specialist Doctor</h2>
-            <p className="text-xs text-slate-400">Choose a specialist to generate your token counter number.</p>
+            <h2 className="text-lg font-black text-white">Select Doctor on Duty</h2>
+            <p className="text-xs text-slate-400">Pick a specialist to generate your token number in this hospital's OPD queue.</p>
           </div>
 
           <div className="space-y-3">
-            {(hospital.doctors || SAMPLE_DOCTORS).map((doc) => (
+            {(hospital.doctors || []).map((doc) => (
               <div
                 key={doc.id}
                 onClick={() => setSelectedDoctor(doc)}
                 className={`p-5 rounded-2xl border cursor-pointer transition-all flex justify-between items-center ${
-                  selectedDoctor.id === doc.id
+                  selectedDoctor?.id === doc.id
                     ? 'bg-slate-900 border-teal-500 shadow-lg shadow-teal-500/5'
                     : 'bg-slate-900/60 border-slate-800 hover:border-slate-700'
                 }`}
@@ -362,7 +318,7 @@ export default function HospitalDetailPage() {
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
                     <h3 className="text-sm font-bold text-white">{doc.name}</h3>
-                    {selectedDoctor.id === doc.id && (
+                    {selectedDoctor?.id === doc.id && (
                       <span className="px-2 py-0.5 bg-teal-500 text-slate-950 text-[10px] font-black rounded-md">
                         SELECTED
                       </span>
@@ -383,11 +339,11 @@ export default function HospitalDetailPage() {
           </div>
         </div>
 
-        {/* Right 1 Col: Token Booking Form */}
+        {/* Right 1 Col: Booking Form */}
         <div className="bg-slate-900 p-6 rounded-3xl border border-teal-500/30 shadow-2xl space-y-5 h-fit">
           <div className="border-b border-slate-800 pb-3">
-            <span className="text-[10px] font-bold text-teal-400 uppercase tracking-wider">Fast Token Desk</span>
-            <h2 className="text-base font-black text-white mt-0.5">Book Digital OPD Token</h2>
+            <span className="text-[10px] font-bold text-teal-400 uppercase tracking-wider">OPD Registration</span>
+            <h2 className="text-base font-black text-white mt-0.5">Book Next Token</h2>
           </div>
 
           <form onSubmit={handleBookToken} className="space-y-4 text-xs">
@@ -396,7 +352,7 @@ export default function HospitalDetailPage() {
               <input
                 type="text"
                 required
-                placeholder="e.g. Sameer"
+                placeholder="e.g. Ramesh Kumar"
                 value={patientName}
                 onChange={(e) => setPatientName(e.target.value)}
                 className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-teal-500"
@@ -408,7 +364,7 @@ export default function HospitalDetailPage() {
                 <label className="block font-semibold text-slate-300 mb-1">Age</label>
                 <input
                   type="number"
-                  placeholder="24"
+                  placeholder="30"
                   value={patientAge}
                   onChange={(e) => setPatientAge(e.target.value)}
                   className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-teal-500"
@@ -440,33 +396,17 @@ export default function HospitalDetailPage() {
             </div>
 
             <div>
-              <label className="block font-semibold text-slate-300 mb-1">Time Window *</label>
+              <label className="block font-semibold text-slate-300 mb-1">Time Slot *</label>
               <select
                 value={selectedTimeSlot}
                 onChange={(e) => setSelectedTimeSlot(e.target.value)}
                 className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-teal-500 text-xs"
               >
-                <option value="09:00 AM - 09:30 AM">09:00 AM - 09:30 AM (Morning Slot)</option>
-                <option value="10:00 AM - 10:30 AM">10:00 AM - 10:30 AM (Peak Slot)</option>
-                <option value="11:30 AM - 12:00 PM">11:30 AM - 12:00 PM (Midday Slot)</option>
-                <option value="01:00 PM - 01:30 PM">01:00 PM - 01:30 PM (Afternoon Slot)</option>
+                <option value="09:00 AM - 09:30 AM">09:00 AM - 09:30 AM (Morning)</option>
+                <option value="10:00 AM - 10:30 AM">10:00 AM - 10:30 AM (Peak)</option>
+                <option value="11:30 AM - 12:00 PM">11:30 AM - 12:00 PM (Midday)</option>
+                <option value="01:00 PM - 01:30 PM">01:00 PM - 01:30 PM (Afternoon)</option>
               </select>
-            </div>
-
-            {/* Price Breakdown */}
-            <div className="p-3 bg-slate-950 rounded-xl border border-slate-800 space-y-1.5">
-              <div className="flex justify-between text-slate-400">
-                <span>Doctor Consultation</span>
-                <span>{selectedDoctor.fee === 0 ? 'FREE' : `₹${selectedDoctor.fee}`}</span>
-              </div>
-              <div className="flex justify-between text-slate-400">
-                <span>Digital Token Fee</span>
-                <span className="text-teal-400">₹0 (Free)</span>
-              </div>
-              <div className="flex justify-between font-bold text-white pt-1 border-t border-slate-800">
-                <span>Total Amount</span>
-                <span className="text-teal-400">{selectedDoctor.fee === 0 ? 'FREE' : `₹${selectedDoctor.fee}`}</span>
-              </div>
             </div>
 
             <button
@@ -474,7 +414,7 @@ export default function HospitalDetailPage() {
               disabled={bookingLoading}
               className="w-full py-3.5 bg-teal-400 text-slate-950 font-black text-xs rounded-xl shadow-lg hover:bg-teal-300 active:scale-95 transition-all disabled:opacity-50"
             >
-              {bookingLoading ? 'Issuing Digital Token...' : '🎫 Issue OPD Token & Join Queue'}
+              {bookingLoading ? 'Issuing Token...' : '🎫 Issue OPD Token & Join Queue'}
             </button>
           </form>
         </div>
