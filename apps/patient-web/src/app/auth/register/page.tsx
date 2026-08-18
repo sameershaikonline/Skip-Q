@@ -1,32 +1,20 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { auth, RecaptchaVerifier, signInWithPhoneNumber } from '@/lib/firebase';
-import type { ConfirmationResult } from '@/lib/firebase';
 
-declare global {
-  interface Window { recaptchaVerifier?: InstanceType<typeof RecaptchaVerifier>; }
-}
-
-const formatE164 = (raw: string) => {
-  let d = raw.replace(/\D/g, '');
-  if (d.startsWith('91') && d.length === 12) d = d.slice(2);
-  d = d.replace(/^0+/, '').slice(-10);
-  return `+91${d}`;
-};
+const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000';
 
 export default function RegisterPage() {
   const router = useRouter();
-  const recaptchaContainerRef = useRef<HTMLDivElement>(null);
   const [name, setName] = useState('');
-  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [step, setStep] = useState<'FORM' | 'OTP'>('FORM');
-  const [confirmation, setConfirmation] = useState<ConfirmationResult | null>(null);
   const [timer, setTimer] = useState(0);
 
   useEffect(() => {
@@ -35,54 +23,30 @@ export default function RegisterPage() {
     return () => clearInterval(id);
   }, [timer]);
 
-  const clearRecaptcha = () => {
-    if (window.recaptchaVerifier) {
-      try { window.recaptchaVerifier.clear(); } catch {}
-      window.recaptchaVerifier = undefined;
-    }
-    if (recaptchaContainerRef.current) recaptchaContainerRef.current.innerHTML = '';
-  };
-
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setSuccess('');
 
-    const digits = phone.replace(/\D/g, '');
     if (!name.trim()) { setError('Please enter your full name.'); return; }
-    if (digits.length !== 10) { setError('Enter a valid 10-digit mobile number.'); return; }
+    if (!email.trim() || !email.includes('@')) { setError('Please enter a valid email address.'); return; }
 
     setLoading(true);
-    const formattedPhone = formatE164(phone);
-
     try {
-      clearRecaptcha();
-
-      const verifier = new RecaptchaVerifier(auth, recaptchaContainerRef.current!, {
-        size: 'invisible',
-        callback: () => {},
-        'expired-callback': () => clearRecaptcha(),
+      const res = await fetch(`${BACKEND}/api/auth/register/patient`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name.trim(), email: email.trim().toLowerCase(), password: 'patient123' }),
       });
 
-      await verifier.render();
-      window.recaptchaVerifier = verifier;
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Registration failed. Please try again.');
 
-      const result = await signInWithPhoneNumber(auth, formattedPhone, verifier);
-      setConfirmation(result);
       setStep('OTP');
       setTimer(60);
+      setSuccess(`OTP sent to ${email}. Please check your inbox.`);
     } catch (err: any) {
-      clearRecaptcha();
-      console.error('[Firebase Phone Auth]', err.code, err.message);
-
-      if (err.code === 'auth/too-many-requests') {
-        setError('Too many attempts on this number. Please wait 24h or try a different number.');
-      } else if (err.code === 'auth/unauthorized-domain') {
-        setError('This domain is not authorised in Firebase. Please contact support.');
-      } else if (err.code === 'auth/invalid-phone-number') {
-        setError('Invalid mobile number. Please check and try again.');
-      } else {
-        setError('Failed to send OTP. Please check your connection and try again.');
-      }
+      setError(err.message || 'Failed to send OTP. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -90,59 +54,69 @@ export default function RegisterPage() {
 
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!confirmation) return;
     setError('');
+
+    if (otp.length !== 6) { setError('Enter the 6-digit OTP from your email.'); return; }
+
     setLoading(true);
-
     try {
-      await confirmation.confirm(otp);
-      const formattedPhone = formatE164(phone);
+      const res = await fetch(`${BACKEND}/api/auth/verify-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim().toLowerCase(), otp }),
+      });
 
-      // Save local session (backend sync optional)
-      localStorage.setItem('user', JSON.stringify({ name, phone: formattedPhone, role: 'PATIENT' }));
-      localStorage.setItem('token', `session_${Date.now()}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Invalid OTP. Please try again.');
 
-      router.push('/dashboard');
-    } catch (err: any) {
-      console.error('[Firebase OTP Verify]', err.code, err.message);
-      if (err.code === 'auth/invalid-verification-code') {
-        setError('Wrong OTP. Please check the SMS and try again.');
-      } else if (err.code === 'auth/code-expired') {
-        setError('OTP expired. Please request a new code.');
-      } else {
-        setError('Verification failed. Please try again.');
+      if (data.token) {
+        localStorage.setItem('token', data.token);
+        if (data.user) localStorage.setItem('user', JSON.stringify(data.user));
+        router.push('/dashboard');
       }
+    } catch (err: any) {
+      setError(err.message || 'Verification failed. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleBack = () => {
-    clearRecaptcha();
-    setOtp('');
+  const handleResend = async () => {
     setError('');
-    setStep('FORM');
-    setConfirmation(null);
+    setSuccess('');
+    setLoading(true);
+    try {
+      const res = await fetch(`${BACKEND}/api/auth/resend-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim().toLowerCase() }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to resend OTP.');
+      setTimer(60);
+      setSuccess(`New OTP sent to ${email}.`);
+    } catch (err: any) {
+      setError(err.message || 'Failed to resend OTP.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="max-w-md mx-auto my-12 px-4">
-      {/* Invisible reCAPTCHA anchor */}
-      <div ref={recaptchaContainerRef} />
-
       <div className="bg-slate-900 p-8 rounded-3xl border border-slate-800 shadow-xl space-y-6">
         {/* Header */}
         <div className="text-center space-y-2">
           <div className="w-12 h-12 mx-auto rounded-2xl bg-teal-500/20 border border-teal-500/30 flex items-center justify-center text-2xl">
-            📱
+            ✉️
           </div>
           <h1 className="text-2xl font-black text-white">
-            {step === 'FORM' ? 'Create Account' : 'Enter OTP'}
+            {step === 'FORM' ? 'Create Account' : 'Verify Email OTP'}
           </h1>
           <p className="text-xs text-slate-400">
             {step === 'FORM'
-              ? 'We'll send a 6-digit code to your mobile'
-              : `OTP sent to +91 ${phone}`}
+              ? 'Enter your details — we\'ll send a 6-digit OTP to your email'
+              : `Check your inbox at ${email}`}
           </p>
         </div>
 
@@ -150,6 +124,13 @@ export default function RegisterPage() {
         {error && (
           <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-xs text-rose-400 text-center">
             {error}
+          </div>
+        )}
+
+        {/* Success */}
+        {success && (
+          <div className="p-3 bg-teal-500/10 border border-teal-500/30 rounded-xl text-xs text-teal-400 text-center">
+            {success}
           </div>
         )}
 
@@ -168,39 +149,32 @@ export default function RegisterPage() {
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Mobile Number</label>
-              <div className="flex gap-2">
-                <span className="flex items-center px-3 bg-slate-950 border border-slate-800 rounded-xl text-sm text-teal-400 font-mono font-bold select-none">
-                  +91
-                </span>
-                <input
-                  type="tel"
-                  inputMode="numeric"
-                  maxLength={10}
-                  required
-                  placeholder="9912092468"
-                  value={phone}
-                  onChange={e => setPhone(e.target.value.replace(/\D/g, ''))}
-                  className="flex-1 p-3 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white placeholder-slate-600 font-mono tracking-widest focus:outline-none focus:border-teal-500 transition-colors"
-                />
-              </div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">Email Address</label>
+              <input
+                type="email"
+                required
+                placeholder="you@example.com"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                className="w-full p-3 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white placeholder-slate-600 focus:outline-none focus:border-teal-500 transition-colors"
+              />
             </div>
             <button
               type="submit"
               disabled={loading}
               className="w-full py-3 bg-teal-400 text-slate-950 font-black text-sm rounded-xl hover:bg-teal-300 active:scale-95 transition-all disabled:opacity-50"
             >
-              {loading ? 'Sending OTP...' : 'Send OTP →'}
+              {loading ? 'Sending OTP...' : '✉️ Send Email OTP →'}
             </button>
           </form>
         )}
 
-        {/* Step 2 — OTP Form */}
+        {/* Step 2 — OTP Verification */}
         {step === 'OTP' && (
           <form onSubmit={handleVerifyOtp} className="space-y-5">
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-2 text-center">
-                6-Digit OTP
+                6-Digit OTP from Email
               </label>
               <input
                 type="text"
@@ -227,13 +201,18 @@ export default function RegisterPage() {
               {timer > 0 ? (
                 <p className="text-xs text-slate-500">Resend in <span className="text-teal-400 font-bold">{timer}s</span></p>
               ) : (
-                <button type="button" onClick={handleBack} className="text-xs text-teal-400 hover:underline">
+                <button type="button" onClick={handleResend} disabled={loading} className="text-xs text-teal-400 hover:underline">
                   ↺ Resend OTP
                 </button>
               )}
             </div>
-            <button type="button" onClick={handleBack} className="w-full text-center text-xs text-slate-500 hover:text-slate-300">
-              ← Change Number
+
+            <button
+              type="button"
+              onClick={() => { setStep('FORM'); setOtp(''); setError(''); setSuccess(''); }}
+              className="w-full text-center text-xs text-slate-500 hover:text-slate-300"
+            >
+              ← Change Email
             </button>
           </form>
         )}

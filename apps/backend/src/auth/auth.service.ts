@@ -42,17 +42,13 @@ export class AuthService {
         },
       });
 
-      const smsSent = await this.smsService.sendOtp(existing.phone || phone, otp);
-      this.logger.log(`OTP ${otp} for ${existing.phone || phone} — SMS sent: ${smsSent}`);
+      await this.mailService.sendOtpEmail(existing.email, otp, existing.name);
+      this.logger.log(`Registration OTP ${otp} sent to email: ${existing.email}`);
 
       return {
         requiresOtp: true,
-        phone: existing.phone || phone,
         email: existing.email,
-        otp,
-        message: smsSent
-          ? `OTP sent via SMS to ${existing.phone || phone}`
-          : `OTP generated. SMS delivery pending — check server logs.`,
+        message: `OTP sent to ${existing.email}. Please check your inbox.`,
       };
     }
 
@@ -73,17 +69,13 @@ export class AuthService {
       },
     });
 
-    const smsSent = await this.smsService.sendOtp(user.phone, otp);
-    this.logger.log(`OTP ${otp} for ${user.phone} — SMS sent: ${smsSent}`);
+    const smsSent = await this.mailService.sendOtpEmail(user.email, otp, user.name);
+    this.logger.log(`Registration OTP ${otp} sent to email: ${user.email}`);
 
     return {
       requiresOtp: true,
-      phone: user.phone,
       email: user.email,
-      otp,
-      message: smsSent
-        ? `OTP sent via SMS to ${user.phone}`
-        : `Account created. SMS delivery pending — check server logs.`,
+      message: `OTP sent to ${user.email}. Please check your inbox.`,
     };
   }
 
@@ -143,13 +135,11 @@ export class AuthService {
       data: { emailOtp: otp, otpExpiresAt: expires },
     });
 
-    const smsSent = await this.smsService.sendOtp(user.phone || user.email, otp);
-    this.logger.log(`Resend OTP ${otp} for ${user.phone} — SMS sent: ${smsSent}`);
+    const smsSent = await this.mailService.sendOtpEmail(user.email, otp, user.name);
+    this.logger.log(`Resend OTP ${otp} sent to email: ${user.email}`);
 
     return {
-      message: smsSent
-        ? `New OTP sent via SMS to ${user.phone || user.email}.`
-        : `OTP regenerated. SMS delivery pending.`,
+      message: `New OTP sent to ${user.email}. Please check your inbox.`,
     };
   }
 
@@ -169,14 +159,10 @@ export class AuthService {
       data: { emailOtp: otp, otpExpiresAt: expires },
     });
 
-    const smsSent = await this.smsService.sendOtp(user.phone || user.email, otp);
-    this.logger.log(`Forgot-password OTP ${otp} for ${user.phone} — SMS sent: ${smsSent}`);
+    await this.mailService.sendPasswordResetEmail(user.email, otp, user.name);
+    this.logger.log(`Password reset OTP ${otp} sent to email: ${user.email}`);
 
-    return {
-      message: smsSent
-        ? `Password reset OTP sent via SMS to ${user.phone || user.email}.`
-        : `OTP generated. SMS delivery pending.`,
-    };
+    return { message: `Password reset OTP sent to ${user.email}. Please check your inbox.` };
   }
 
   async resetPassword(email: string, otp: string, newPassword: any) {
