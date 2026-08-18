@@ -29,7 +29,8 @@ export default function PatientHomePage() {
 
   const fetchHospitals = () => {
     setLoading(true);
-    fetch('http://localhost:4000/api/hospitals')
+    const backend = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000';
+    fetch(`${backend}/api/hospitals`)
       .then((res) => res.json())
       .then((data) => {
         if (Array.isArray(data)) {

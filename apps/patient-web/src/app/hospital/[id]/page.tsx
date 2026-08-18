@@ -37,7 +37,8 @@ export default function HospitalDetailPage() {
   useEffect(() => {
     if (!hospitalId) return;
 
-    fetch(`http://localhost:4000/api/hospitals/${hospitalId}`)
+    const backend = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000';
+    fetch(`${backend}/api/hospitals/${hospitalId}`)
       .then((res) => {
         if (!res.ok) throw new Error('Hospital not found');
         return res.json();
@@ -64,7 +65,8 @@ export default function HospitalDetailPage() {
     const doctorId = hospital?.doctors?.[0]?.id || `doc-gen-${Date.now()}`;
 
     try {
-      const res = await fetch('http://localhost:4000/api/appointments', {
+      const backend = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000';
+      const res = await fetch(`${backend}/api/appointments`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

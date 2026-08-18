@@ -79,24 +79,19 @@ export class AuthService {
     };
   }
 
-  async verifyPhoneOtp(phone: string, otp: string) {
+  async verifyEmailOtp(email: string, otp: string) {
     const user = await this.prisma.user.findFirst({
       where: {
-        OR: [{ phone }, { email: phone }],
+        OR: [{ email }, { phone: email }],
       },
     });
 
     if (!user) {
-      throw new BadRequestException('User account not found for this mobile number');
-    }
-
-    if (user.isVerified) {
-      const token = this.generateToken(user.id, user.email, user.role);
-      return { user: { id: user.id, name: user.name, phone: user.phone, role: user.role }, token };
+      throw new BadRequestException('User account not found for this email address.');
     }
 
     if (user.emailOtp && user.emailOtp !== otp && otp !== '123456') {
-      throw new BadRequestException('Invalid 6-digit SMS Verification OTP code');
+      throw new BadRequestException('Invalid 6-digit OTP code. Please check your email.');
     }
 
     const updatedUser = await this.prisma.user.update({
@@ -111,14 +106,14 @@ export class AuthService {
     const token = this.generateToken(updatedUser.id, updatedUser.email, updatedUser.role);
 
     return {
-      message: 'Mobile number verified successfully!',
-      user: { id: updatedUser.id, name: updatedUser.name, phone: updatedUser.phone, role: updatedUser.role },
+      message: 'Email verified successfully!',
+      user: { id: updatedUser.id, name: updatedUser.name, email: updatedUser.email, role: updatedUser.role },
       token,
     };
   }
 
-  async verifyEmailOtp(email: string, otp: string) {
-    return this.verifyPhoneOtp(email, otp);
+  async verifyPhoneOtp(phone: string, otp: string) {
+    return this.verifyEmailOtp(phone, otp);
   }
 
   async resendEmailOtp(email: string) {

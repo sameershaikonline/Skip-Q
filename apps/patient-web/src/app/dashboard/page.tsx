@@ -25,7 +25,8 @@ export default function PatientDashboard() {
       return;
     }
 
-    fetch('http://localhost:4000/api/appointments/my-patient-appointments', {
+    const backend = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000';
+    fetch(`${backend}/api/appointments/my-patient-appointments`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((res) => res.json())

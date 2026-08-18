@@ -4,6 +4,8 @@ import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
+const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000';
+
 function ResetPasswordFormContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -31,10 +33,10 @@ function ResetPasswordFormContent() {
     setError('');
 
     try {
-      const res = await fetch('http://localhost:4000/api/auth/reset-password', {
+      const res = await fetch(`${BACKEND}/api/auth/reset-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, otp, newPassword }),
+        body: JSON.stringify({ email: email.trim().toLowerCase(), otp, newPassword }),
       });
 
       const data = await res.json();
@@ -98,7 +100,7 @@ function ResetPasswordFormContent() {
             required
             placeholder="123456"
             value={otp}
-            onChange={(e) => setOtp(e.target.value)}
+            onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
             className="w-full p-3 bg-slate-950 border border-slate-800 rounded-xl text-xs text-center font-mono tracking-widest text-white text-lg focus:outline-none focus:border-rose-500"
           />
         </div>

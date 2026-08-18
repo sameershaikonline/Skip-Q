@@ -4,6 +4,8 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
+const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000';
+
 export default function ForgotPasswordPage() {
   const router = useRouter();
   const [email, setEmail] = useState('');
@@ -18,10 +20,10 @@ export default function ForgotPasswordPage() {
     setMessage('');
 
     try {
-      const res = await fetch('http://localhost:4000/api/auth/forgot-password', {
+      const res = await fetch(`${BACKEND}/api/auth/forgot-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email: email.trim().toLowerCase() }),
       });
 
       const data = await res.json();
@@ -30,9 +32,9 @@ export default function ForgotPasswordPage() {
         throw new Error(data.message || 'Unable to request password reset.');
       }
 
-      setMessage(data.message);
+      setMessage(data.message || 'Password reset OTP sent to your email.');
       setTimeout(() => {
-        router.push(`/auth/reset-password?email=${encodeURIComponent(email)}`);
+        router.push(`/auth/reset-password?email=${encodeURIComponent(email.trim().toLowerCase())}`);
       }, 1500);
     } catch (err: any) {
       setError(err.message || 'Something went wrong. Please try again.');
@@ -49,7 +51,7 @@ export default function ForgotPasswordPage() {
             🔑
           </div>
           <h1 className="text-2xl font-black text-white">Forgot Password?</h1>
-          <p className="text-xs text-slate-400">Enter your email address to receive a 6-digit Reset OTP</p>
+          <p className="text-xs text-slate-400">Enter your registered email address to receive a 6-digit Reset OTP</p>
         </div>
 
         {error && (
