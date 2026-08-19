@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { prisma } from '@healthcare/database';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,43 +14,44 @@ export async function POST(req: Request) {
     const cleanEmail = email.trim().toLowerCase();
     const cleanOtp = otp.trim();
 
-    const store: Map<string, { otp: string; name: string; phone?: string; expiresAt: number }> =
-      (global as any).__OTP_STORE__ || new Map();
+    // 1. Fetch persistent User record from Supabase PostgreSQL
+    const user = await prisma.user.findUnique({
+      where: { email: cleanEmail },
+    });
 
-    const storedData = store.get(cleanEmail);
-
-    if (!storedData) {
+    if (!user || !user.emailOtp) {
       return NextResponse.json(
         { message: 'No active OTP found for this email. Please click Resend OTP.' },
         { status: 400 }
       );
     }
 
-    if (Date.now() > storedData.expiresAt) {
-      store.delete(cleanEmail);
+    // 2. Check Expiration
+    if (user.otpExpiresAt && new Date() > user.otpExpiresAt) {
       return NextResponse.json(
-        { message: 'This OTP code has expired. Please request a new OTP code.' },
+        { message: 'This OTP has expired. Please click Resend OTP to receive a new code.' },
         { status: 400 }
       );
     }
 
-    if (storedData.otp !== cleanOtp) {
+    // 3. Check OTP Match
+    if (user.emailOtp !== cleanOtp) {
       return NextResponse.json(
-        { message: 'Incorrect verification OTP. Please enter the exact 6 digits.' },
+        { message: 'Invalid OTP code. Please enter the correct 6-digit code.' },
         { status: 400 }
       );
     }
 
-    const { name, phone } = storedData;
-
+    // 4. Valid OTP match - return success
     return NextResponse.json({
       verified: true,
-      message: 'OTP verified successfully! Please set your secure password.',
+      message: 'OTP verified successfully! Now set your account password.',
       email: cleanEmail,
-      name,
-      phone,
+      name: user.name,
+      phone: user.phone,
     });
   } catch (err: any) {
+    console.error('Verify OTP Error:', err);
     return NextResponse.json({ message: err.message || 'Verification failed.' }, { status: 500 });
   }
 }

@@ -21,7 +21,7 @@ export async function POST(req: Request) {
     const cleanPhone = (phone || '').trim();
     const passwordHash = hashPassword(password);
 
-    // Upsert User in Supabase PostgreSQL
+    // Update User in Supabase PostgreSQL and clear temporary OTP
     const user = await prisma.user.upsert({
       where: { email: cleanEmail },
       update: {
@@ -30,6 +30,8 @@ export async function POST(req: Request) {
         password: passwordHash,
         role: 'PATIENT',
         isVerified: true,
+        emailOtp: null,
+        otpExpiresAt: null,
       },
       create: {
         name: cleanName,
@@ -38,12 +40,10 @@ export async function POST(req: Request) {
         password: passwordHash,
         role: 'PATIENT',
         isVerified: true,
+        emailOtp: null,
+        otpExpiresAt: null,
       },
     });
-
-    // Remove consumed OTP from store
-    const store = (global as any).__OTP_STORE__;
-    if (store) store.delete(cleanEmail);
 
     const token = `jwt_${Date.now()}_${Math.random().toString(36).substring(2)}`;
 

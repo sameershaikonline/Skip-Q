@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ShieldCheck, Lock, Mail, User, Phone } from 'lucide-react';
+import { ShieldCheck, Lock, Mail, User, Phone, AlertCircle, RefreshCw } from 'lucide-react';
 
 type Step = 'DETAILS' | 'OTP' | 'PASSWORD';
 
@@ -19,8 +19,11 @@ export default function PatientRegisterPage() {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
 
-  // Step 2 OTP
+  // Step 2 OTP & Attempts
   const [otp, setOtp] = useState('');
+  const [attemptsRemaining, setAttemptsRemaining] = useState(5);
+  const [resendTimer, setResendTimer] = useState(30);
+  const [resending, setResending] = useState(false);
   const [previewOtp, setPreviewOtp] = useState<string | null>(null);
 
   // Step 3 Password
@@ -31,7 +34,14 @@ export default function PatientRegisterPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  // 1. Submit Registration Details with Strict Validations
+  useEffect(() => {
+    if (step === 'OTP' && resendTimer > 0) {
+      const id = setInterval(() => setResendTimer((t) => t - 1), 1000);
+      return () => clearInterval(id);
+    }
+  }, [step, resendTimer]);
+
+  // 1. Submit Registration Details with Active Email Notice
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -74,6 +84,8 @@ export default function PatientRegisterPage() {
 
       if (data.otp) setPreviewOtp(data.otp);
       setSuccess(data.message || `Verification OTP sent to ${cleanEmail}`);
+      setAttemptsRemaining(5);
+      setResendTimer(30);
       setStep('OTP');
     } catch (err: any) {
       setError(err.message || 'Registration request failed.');
@@ -82,7 +94,7 @@ export default function PatientRegisterPage() {
     }
   };
 
-  // 2. Verify OTP
+  // 2. Verify OTP with 5 Attempts Limit
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -91,6 +103,11 @@ export default function PatientRegisterPage() {
     const cleanOtp = otp.trim();
     if (!cleanOtp || cleanOtp.length !== 6) {
       setError('Please enter the 6-digit verification code.');
+      return;
+    }
+
+    if (attemptsRemaining <= 0) {
+      setError('Maximum 5 OTP attempts reached. Please click "Resend OTP" to receive a fresh code.');
       return;
     }
 
@@ -104,7 +121,16 @@ export default function PatientRegisterPage() {
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Invalid or expired OTP code.');
+
+      if (!res.ok) {
+        const nextAttempts = attemptsRemaining - 1;
+        setAttemptsRemaining(nextAttempts);
+        if (nextAttempts > 0) {
+          throw new Error(`Invalid OTP code! You have ${nextAttempts} attempt${nextAttempts > 1 ? 's' : ''} remaining.`);
+        } else {
+          throw new Error('Maximum 5 OTP attempts exhausted. Please click "Resend OTP" to generate a fresh code.');
+        }
+      }
 
       setSuccess('OTP verified successfully! Now set your account password.');
       setStep('PASSWORD');
@@ -112,6 +138,34 @@ export default function PatientRegisterPage() {
       setError(err.message || 'Invalid OTP code.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Resend OTP
+  const handleResendOtp = async () => {
+    if (resendTimer > 0 || resending) return;
+    setResending(true);
+    setError('');
+
+    try {
+      const res = await fetch('/api/auth/resend-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim().toLowerCase() }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to resend OTP');
+
+      if (data.otp) setPreviewOtp(data.otp);
+      setSuccess(data.message || `Fresh OTP sent to ${email}`);
+      setAttemptsRemaining(5);
+      setResendTimer(30);
+      setOtp('');
+    } catch (err: any) {
+      setError(err.message || 'Error resending code.');
+    } finally {
+      setResending(false);
     }
   };
 
@@ -177,10 +231,23 @@ export default function PatientRegisterPage() {
           </h1>
           <p className="text-xs text-slate-500 font-medium">
             {step === 'DETAILS' && 'Step 1 of 3: Enter your contact details'}
-            {step === 'OTP' && 'Step 2 of 3: Enter the 6-digit code sent to your email'}
+            {step === 'OTP' && `Step 2 of 3: Code sent to ${email}`}
             {step === 'PASSWORD' && 'Step 3 of 3: Create a secure password for future logins'}
           </p>
         </div>
+
+        {/* PROMINENT ACTIVE EMAIL NOTICE DIALOGUE (USER REQUESTED) */}
+        {step === 'DETAILS' && (
+          <div className="p-4 bg-blue-500/10 border border-blue-500/30 rounded-2xl text-left flex items-start gap-3">
+            <Mail className="w-5 h-5 text-blue-500 shrink-0 mt-0.5" />
+            <p className="text-xs font-medium text-slate-700 dark:text-slate-300 leading-relaxed">
+              <strong className="text-blue-600 dark:text-blue-400 font-bold block mb-0.5">
+                Active Email Required:
+              </strong>
+              We will send a 6-digit OTP verification code to your email. Please make sure to enter your active, accessible email address to complete registration.
+            </p>
+          </div>
+        )}
 
         {/* Feedback Alerts */}
         {error && (
@@ -226,7 +293,7 @@ export default function PatientRegisterPage() {
                 <input
                   type="email"
                   required
-                  placeholder="Enter your email (e.g. name@gmail.com)"
+                  placeholder="Enter active email (e.g. name@gmail.com)"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full bg-transparent text-sm font-medium outline-none text-slate-900 dark:text-white placeholder-slate-400"
@@ -276,11 +343,16 @@ export default function PatientRegisterPage() {
           </form>
         )}
 
-        {/* STEP 2: OTP Verification */}
+        {/* STEP 2: OTP Verification with 5 Attempts Limit & Resend Timer */}
         {step === 'OTP' && (
           <form onSubmit={handleVerifyOtp} className="space-y-4 text-xs font-bold text-left">
             <div>
-              <label className="block text-slate-700 dark:text-slate-300 mb-1">6-Digit Verification Code</label>
+              <div className="flex justify-between items-center mb-1">
+                <label className="text-slate-700 dark:text-slate-300">6-Digit Verification Code</label>
+                <span className="text-[11px] font-bold text-blue-500">
+                  {attemptsRemaining} attempt{attemptsRemaining !== 1 ? 's' : ''} left
+                </span>
+              </div>
               <input
                 type="text"
                 required
@@ -294,7 +366,7 @@ export default function PatientRegisterPage() {
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || attemptsRemaining <= 0}
               className="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-4 rounded-[2rem] text-sm shadow-xl shadow-blue-500/30 transition-all hover:scale-105 disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {loading ? (
@@ -307,13 +379,24 @@ export default function PatientRegisterPage() {
               )}
             </button>
 
-            <div className="text-center pt-2">
+            {/* Resend OTP Control */}
+            <div className="flex items-center justify-between pt-2 text-xs">
               <button
                 type="button"
                 onClick={() => setStep('DETAILS')}
                 className="text-slate-500 hover:text-slate-700 font-bold"
               >
-                ← Back to edit contact details
+                ← Edit email / phone
+              </button>
+
+              <button
+                type="button"
+                onClick={handleResendOtp}
+                disabled={resendTimer > 0 || resending}
+                className="text-blue-500 hover:underline font-bold disabled:opacity-40 disabled:no-underline flex items-center gap-1"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${resending ? 'animate-spin' : ''}`} />
+                <span>{resendTimer > 0 ? `Resend in ${resendTimer}s` : 'Resend OTP'}</span>
               </button>
             </div>
           </form>
