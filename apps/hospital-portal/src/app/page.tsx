@@ -4,16 +4,12 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
-  Building2,
   Users,
   RefreshCw,
   LogOut,
   Stethoscope,
   ChevronRight,
-  ChevronLeft,
-  Volume2,
-  Clock,
-  CheckCircle2
+  ChevronLeft
 } from 'lucide-react';
 
 interface AppointmentItem {
@@ -120,7 +116,7 @@ export default function HospitalDashboardPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ liveToken: String(newToken) }),
       });
-      setTokenNotification(`Token #${newToken} broadcasted to patient devices.`);
+      setTokenNotification(`Token #${newToken} is live on Patient Apps!`);
       setTimeout(() => setTokenNotification(''), 3000);
     } catch (err) {
       console.warn('Token update failed:', err);
@@ -156,130 +152,120 @@ export default function HospitalDashboardPage() {
 
   if (authChecking) {
     return (
-      <div className="max-w-md mx-auto my-32 text-center space-y-3">
-        <div className="w-6 h-6 border-2 border-slate-900 border-t-transparent rounded-full animate-spin mx-auto" />
-        <p className="text-xs text-slate-500 font-medium">Verifying Session...</p>
+      <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
+        <div className="loader-ring"></div>
+        <p className="font-black animate-pulse text-slate-500 uppercase tracking-widest text-xs">
+          Verifying Session...
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6 pb-20">
+    <div className="max-w-6xl mx-auto px-4 py-8 space-y-8 pb-24">
       {/* Top Banner */}
-      <div className="bg-white p-5 rounded-xl border border-slate-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div className="glass p-8 rounded-[3rem] shadow-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-lg font-bold text-slate-900">{hospitalName}</h1>
-            <span className="px-2 py-0.5 bg-slate-100 text-slate-700 text-[10px] font-semibold rounded border border-slate-200">
-              Reception Active
-            </span>
+            <span className="w-3 h-3 rounded-full bg-blue-500 animate-pulse" />
+            <h1 className="text-3xl font-black text-slate-900 dark:text-white">{hospitalName}</h1>
           </div>
-          <p className="text-xs text-slate-500 mt-0.5">
+          <p className="text-sm font-medium text-slate-500 mt-1">
             {hospitalEmail} • {hospital?.address || 'Mahabubabad'}
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-3">
           <Link
             href="/doctors"
-            className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium text-xs rounded-lg transition-colors flex items-center gap-1.5"
+            className="px-5 py-2.5 glass text-slate-700 dark:text-slate-200 font-bold text-xs rounded-2xl hover:scale-105 transition-transform"
           >
-            <Stethoscope className="w-3.5 h-3.5" />
-            <span>Doctors</span>
+            Doctors Roster
           </Link>
           <button
-            onClick={fetchHospitalData}
-            className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium text-xs rounded-lg transition-colors flex items-center gap-1.5"
-          >
-            <RefreshCw className="w-3.5 h-3.5" />
-            <span>Sync</span>
-          </button>
-          <button
             onClick={handleLogout}
-            className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 font-medium text-xs rounded-lg transition-colors border border-rose-200 flex items-center gap-1"
+            className="px-5 py-2.5 bg-rose-500/10 text-rose-500 font-bold text-xs rounded-2xl hover:bg-rose-500/20 transition-colors"
           >
-            <LogOut className="w-3.5 h-3.5" />
-            <span>Sign Out</span>
+            Sign Out
           </button>
         </div>
       </div>
 
       {tokenNotification && (
-        <div className="p-3 bg-teal-800 text-white text-xs font-medium rounded-lg text-center shadow-sm">
+        <div className="p-4 bg-blue-600 text-white font-bold text-sm rounded-2xl text-center shadow-xl shadow-blue-500/30 animate-in fade-in">
           {tokenNotification}
         </div>
       )}
 
-      {/* OPD TOKEN CALLING CONSOLE */}
-      <div className="bg-white rounded-xl border border-slate-200 p-6 space-y-5">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-100 pb-4">
+      {/* OPD CALLER DESK */}
+      <div className="glass p-8 md:p-10 rounded-[3rem] shadow-2xl space-y-8 border-2 border-blue-500/20">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-200 dark:border-slate-800 pb-5">
           <div>
-            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">
-              Outpatient Queue Controller
+            <span className="text-xs font-black uppercase tracking-widest text-blue-500 block">
+              ● RECEPTION CONTROLLER
             </span>
-            <h2 className="text-base font-semibold text-slate-900">
-              Live Room Calling Desk
+            <h2 className="text-2xl font-black text-slate-900 dark:text-white mt-1">
+              Live Consultation Room Caller
             </h2>
           </div>
 
           <form onSubmit={handleSetManualToken} className="flex items-center gap-2">
             <input
               type="number"
-              placeholder="Jump to Token #"
+              placeholder="Jump to #"
               value={manualTokenInput}
               onChange={(e) => setManualTokenInput(e.target.value)}
-              className="w-32 p-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 font-mono text-center focus:outline-none focus:border-slate-400"
+              className="w-32 p-3 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-2xl text-sm font-mono text-center font-bold outline-none focus:border-blue-500"
             />
             <button
               type="submit"
-              className="px-3 py-1.5 bg-slate-900 text-white font-medium text-xs rounded-lg hover:bg-slate-800"
+              className="px-5 py-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold text-xs rounded-2xl hover:scale-105 transition-transform"
             >
               Set
             </button>
           </form>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-center">
           {/* Big Live Token Box */}
-          <div className="p-6 bg-slate-900 rounded-xl text-center space-y-1 text-white">
-            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">
-              Current Token in Room
+          <div className="p-10 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-[3rem] text-center text-white shadow-2xl shadow-blue-500/30 space-y-2">
+            <span className="text-[11px] font-black uppercase tracking-widest text-blue-200 block">
+              CURRENT IN ROOM
             </span>
-            <div className="text-6xl font-mono font-bold text-teal-400">
+            <div className="text-7xl font-mono font-black">
               #{currentLiveToken}
             </div>
-            <span className="text-[11px] text-slate-400 block pt-1">
-              Broadcasting Live to Patient App
+            <span className="text-xs text-blue-200 font-bold block pt-1 animate-pulse">
+              ● Broadcasting Live
             </span>
           </div>
 
-          {/* Caller Action */}
-          <div className="lg:col-span-2 space-y-3">
+          {/* Caller Actions */}
+          <div className="lg:col-span-2 space-y-4">
             <button
               onClick={handleCallNext}
               disabled={updating}
-              className="w-full py-4 bg-teal-700 hover:bg-teal-800 text-white font-semibold text-base rounded-xl transition-all shadow-sm flex items-center justify-center gap-2"
+              className="w-full py-6 bg-blue-600 hover:bg-blue-500 text-white font-black text-xl rounded-[2.5rem] shadow-2xl shadow-blue-500/30 transition-all hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-3"
             >
               <span>Call Next Patient (Token #{currentLiveToken + 1})</span>
-              <ChevronRight className="w-5 h-5" />
+              <ChevronRight className="w-6 h-6" />
             </button>
 
-            <div className="grid grid-cols-2 gap-2.5">
+            <div className="grid grid-cols-2 gap-4">
               <button
                 onClick={handleCallPrevious}
                 disabled={currentLiveToken <= 1 || updating}
-                className="py-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 font-medium text-xs rounded-lg disabled:opacity-40 flex items-center justify-center gap-1"
+                className="py-4 glass text-slate-700 dark:text-slate-200 font-bold text-sm rounded-[2rem] disabled:opacity-40 hover:scale-105 transition-transform"
               >
-                <ChevronLeft className="w-4 h-4" />
-                <span>Previous (#{Math.max(1, currentLiveToken - 1)})</span>
+                ← Prev (#{Math.max(1, currentLiveToken - 1)})
               </button>
+
               <button
                 onClick={() => handleUpdateLiveToken(currentLiveToken)}
                 disabled={updating}
-                className="py-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 font-medium text-xs rounded-lg flex items-center justify-center gap-1"
+                className="py-4 glass text-slate-700 dark:text-slate-200 font-bold text-sm rounded-[2rem] hover:scale-105 transition-transform"
               >
-                <Volume2 className="w-4 h-4 text-slate-500" />
-                <span>Re-Broadcast Token #{currentLiveToken}</span>
+                Re-Announce Token #{currentLiveToken}
               </button>
             </div>
           </div>
@@ -287,42 +273,31 @@ export default function HospitalDashboardPage() {
       </div>
 
       {/* OPD Patients Table */}
-      <div className="bg-white rounded-xl border border-slate-200 p-5 space-y-3">
-        <div className="flex justify-between items-center border-b border-slate-100 pb-3">
-          <div>
-            <h3 className="text-sm font-semibold text-slate-900">Today's Appointment Log</h3>
-            <p className="text-xs text-slate-500">Patient queue registrations synchronized in real time</p>
-          </div>
-          <span className="text-xs font-medium text-slate-600 bg-slate-100 px-2.5 py-0.5 rounded border border-slate-200">
-            {appointments.length} Registered Patients
-          </span>
-        </div>
-
+      <div className="glass p-8 rounded-[3rem] shadow-2xl space-y-4">
+        <h3 className="text-xl font-black text-slate-900 dark:text-white">Today's OPD Queue</h3>
         {appointments.length === 0 ? (
-          <div className="p-8 text-center text-xs text-slate-500 space-y-1">
-            <p>No outpatient appointments booked for today yet.</p>
-          </div>
+          <p className="text-sm font-medium text-slate-500 text-center py-6">No patient appointments booked yet.</p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 text-slate-600 font-semibold text-[11px] border-b border-slate-200">
+            <table className="w-full text-left text-xs font-medium">
+              <thead className="text-slate-400 uppercase font-black text-[10px] border-b border-slate-200 dark:border-slate-800">
                 <tr>
-                  <th className="p-2.5">Token</th>
-                  <th className="p-2.5">Patient Name</th>
-                  <th className="p-2.5">Contact</th>
-                  <th className="p-2.5">Time Window</th>
-                  <th className="p-2.5">Status</th>
+                  <th className="p-3">Token #</th>
+                  <th className="p-3">Patient Name</th>
+                  <th className="p-3">Phone</th>
+                  <th className="p-3">Time Slot</th>
+                  <th className="p-3">Status</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {appointments.map((apt, idx) => (
-                  <tr key={apt.id || idx} className="hover:bg-slate-50">
-                    <td className="p-2.5 font-mono font-semibold text-slate-900">#{apt.token?.tokenNumber || idx + 1}</td>
-                    <td className="p-2.5 font-medium text-slate-900">{apt.patient?.name || apt.patientName || 'Patient'}</td>
-                    <td className="p-2.5 text-slate-500">{apt.patient?.phone || '—'}</td>
-                    <td className="p-2.5 text-slate-600">{apt.timeSlot}</td>
-                    <td className="p-2.5">
-                      <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-700 border border-slate-200">
+                  <tr key={apt.id || idx}>
+                    <td className="p-3 font-mono font-black text-blue-500 text-sm">#{apt.token?.tokenNumber || idx + 1}</td>
+                    <td className="p-3 font-bold text-slate-900 dark:text-white">{apt.patient?.name || 'Patient'}</td>
+                    <td className="p-3 text-slate-500">{apt.patient?.phone || '—'}</td>
+                    <td className="p-3 text-slate-600 dark:text-slate-300">{apt.timeSlot}</td>
+                    <td className="p-3">
+                      <span className="px-3 py-1 rounded-full text-[10px] font-black bg-blue-500/10 text-blue-500">
                         {apt.status}
                       </span>
                     </td>

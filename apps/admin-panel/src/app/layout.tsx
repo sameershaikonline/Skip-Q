@@ -1,83 +1,57 @@
 import './globals.css';
 import React from 'react';
 import Link from 'next/link';
-import { Shield, Building2, Activity } from 'lucide-react';
+import { Shield } from 'lucide-react';
 import ThemeToggle from '@/components/ThemeToggle';
 
 export const metadata = {
-  title: 'Skip-Q | Super Admin Governance Hub',
-  description: 'Master administrative system for hospital onboarding, validation, and queue supervision.',
+  title: 'Skip-Q | Super Admin Governance',
+  description: 'Master administrative system for hospital onboarding and queue supervision.',
 };
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col">
-        <header className="border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 sticky top-0 z-50">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="w-9 h-9 rounded-lg bg-slate-900 dark:bg-slate-800 flex items-center justify-center text-white shadow-sm">
-                <Shield className="w-5 h-5 text-indigo-400" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">Skip-Q</span>
-                  <span className="text-[10px] font-semibold bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 px-2 py-0.5 rounded border border-indigo-200 dark:border-indigo-800">
-                    Governance
-                  </span>
+      <body className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 selection:bg-blue-500/30">
+        <nav className="sticky top-0 z-50 glass border-b border-slate-200 dark:border-slate-800 transition-colors">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between h-20 items-center">
+              {/* Brand Logo */}
+              <Link href="/" className="flex items-center space-x-3 cursor-pointer group">
+                <div className="w-11 h-11 bg-gradient-to-tr from-blue-600 to-indigo-700 rounded-xl flex items-center justify-center shadow-xl shadow-blue-500/30 group-hover:scale-105 transition-transform text-white">
+                  <Shield className="w-6 h-6" />
                 </div>
-                <p className="text-[11px] text-slate-500 hidden sm:block">
-                  Master Administrative Console
-                </p>
+                <span className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+                  Super<span className="text-blue-500">Admin</span>
+                </span>
+              </Link>
+
+              {/* Navigation Links */}
+              <div className="hidden md:flex items-center space-x-1">
+                <Link
+                  href="/"
+                  className="px-4 py-2 rounded-xl text-sm font-bold transition-all hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300"
+                >
+                  Governance Dashboard
+                </Link>
+                <a
+                  href="https://skipq-user.vercel.app"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-4 py-2 rounded-xl text-sm font-bold transition-all hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300"
+                >
+                  Patient App ↗
+                </a>
+              </div>
+
+              <div className="flex items-center space-x-3">
+                <ThemeToggle />
               </div>
             </div>
-
-            <nav className="flex gap-4 text-xs font-medium items-center text-slate-600 dark:text-slate-300">
-              <Link href="/" className="hover:text-slate-900 dark:hover:text-white transition-colors">
-                Admin Console
-              </Link>
-              <a
-                href="https://skipq-user.vercel.app"
-                target="_blank"
-                rel="noreferrer"
-                className="hover:text-slate-900 dark:hover:text-white transition-colors hidden sm:block"
-              >
-                Patient Portal ↗
-              </a>
-              <ThemeToggle />
-            </nav>
           </div>
-        </header>
+        </nav>
 
-        <main className="flex-1">{children}</main>
-
-        <footer className="border-t border-slate-200 bg-white py-6 text-xs text-slate-500">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row justify-between items-center gap-4">
-            <div>
-              <p className="font-semibold text-slate-800">Skip-Q Master Governance Hub</p>
-              <p className="text-[11px] text-slate-500">Facility verification and database administration</p>
-            </div>
-            <div className="flex items-center space-x-4 text-xs font-medium">
-              <a
-                href="https://skipq-user.vercel.app"
-                target="_blank"
-                rel="noreferrer"
-                className="text-slate-600 hover:text-slate-900"
-              >
-                Patient Portal
-              </a>
-              <span className="text-slate-300">•</span>
-              <a
-                href="https://skipq-hospital.vercel.app"
-                target="_blank"
-                rel="noreferrer"
-                className="text-slate-600 hover:text-slate-900"
-              >
-                Hospital Reception
-              </a>
-            </div>
-          </div>
-        </footer>
+        <main className="min-h-[calc(100vh-80px)]">{children}</main>
       </body>
     </html>
   );

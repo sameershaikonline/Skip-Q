@@ -5,77 +5,52 @@ import { Building2, Stethoscope, Activity } from 'lucide-react';
 import ThemeToggle from '@/components/ThemeToggle';
 
 export const metadata = {
-  title: 'Skip-Q | Hospital Outpatient Queue Portal',
-  description: 'Hospital reception queue caller, outpatient tokens, and doctor scheduling.',
+  title: 'Skip-Q | Hospital Management Portal',
+  description: 'Reception desk queue caller and doctor schedule management.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
-        {/* Clean Enterprise Hospital Header */}
-        <header className="sticky top-0 z-50 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-            <Link href="/" className="flex items-center space-x-3">
-              <div className="w-9 h-9 rounded-lg bg-slate-900 dark:bg-slate-800 flex items-center justify-center text-white shadow-sm">
-                <Building2 className="w-5 h-5 text-teal-400" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">Skip-Q</span>
-                  <span className="text-[10px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700">
-                    Hospital Desk
-                  </span>
+      <body className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 selection:bg-blue-500/30">
+        <nav className="sticky top-0 z-50 glass border-b border-slate-200 dark:border-slate-800 transition-colors">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between h-20 items-center">
+              {/* Brand Logo */}
+              <Link href="/" className="flex items-center space-x-3 cursor-pointer group">
+                <div className="w-11 h-11 bg-gradient-to-tr from-blue-600 to-indigo-700 rounded-xl flex items-center justify-center shadow-xl shadow-blue-500/30 group-hover:scale-105 transition-transform text-white">
+                  <Building2 className="w-6 h-6" />
                 </div>
-                <p className="text-[11px] text-slate-500 hidden sm:block">
-                  Outpatient Department Token Controller
-                </p>
+                <span className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+                  Hospital<span className="text-blue-500">Portal</span>
+                </span>
+              </Link>
+
+              {/* Navigation Links */}
+              <div className="hidden md:flex items-center space-x-1">
+                <Link
+                  href="/"
+                  className="px-4 py-2 rounded-xl text-sm font-bold transition-all hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300"
+                >
+                  Queue Caller
+                </Link>
+
+                <Link
+                  href="/doctors"
+                  className="px-4 py-2 rounded-xl text-sm font-bold transition-all hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300"
+                >
+                  Doctor Schedule
+                </Link>
               </div>
-            </Link>
 
-            <nav className="flex items-center space-x-5 text-xs font-medium text-slate-600 dark:text-slate-300">
-              <Link href="/" className="hover:text-slate-900 dark:hover:text-white transition-colors flex items-center gap-1">
-                <Activity className="w-3.5 h-3.5 text-slate-400" />
-                <span>Live Calling</span>
-              </Link>
-              <Link href="/doctors" className="hover:text-slate-900 dark:hover:text-white transition-colors flex items-center gap-1">
-                <Stethoscope className="w-3.5 h-3.5 text-slate-400" />
-                <span>Doctor Schedule</span>
-              </Link>
-              <ThemeToggle />
-            </nav>
-          </div>
-        </header>
-
-        <main className="flex-1">{children}</main>
-
-        <footer className="border-t border-slate-200 bg-white py-6 text-xs text-slate-500">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row justify-between items-center gap-4">
-            <div>
-              <p className="font-semibold text-slate-800">Skip-Q Outpatient Management Infrastructure</p>
-              <p className="text-[11px] text-slate-500">Reception token broadcasting console</p>
-            </div>
-            <div className="flex items-center space-x-4 text-xs">
-              <a
-                href="https://skipq-user.vercel.app"
-                target="_blank"
-                rel="noreferrer"
-                className="text-slate-600 hover:text-slate-900"
-              >
-                Patient Portal ↗
-              </a>
-              <span className="text-slate-300">•</span>
-              <a
-                href="https://skipq-admin.vercel.app"
-                target="_blank"
-                rel="noreferrer"
-                className="text-slate-600 hover:text-slate-900"
-              >
-                Super Admin Hub ↗
-              </a>
+              <div className="flex items-center space-x-3">
+                <ThemeToggle />
+              </div>
             </div>
           </div>
-        </footer>
+        </nav>
+
+        <main className="min-h-[calc(100vh-80px)]">{children}</main>
       </body>
     </html>
   );

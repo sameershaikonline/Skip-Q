@@ -1,89 +1,46 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Sun, Moon, Monitor } from 'lucide-react';
-
-type ThemeMode = 'light' | 'dark' | 'system';
+import { Sun, Moon } from 'lucide-react';
 
 export default function ThemeToggle() {
-  const [theme, setTheme] = useState<ThemeMode>('system');
+  const [isDark, setIsDark] = useState(false);
   const [mounted, setMounted] = useState(false);
-
-  const applyTheme = (mode: ThemeMode) => {
-    const root = document.documentElement;
-    if (mode === 'dark') {
-      root.classList.add('dark');
-    } else if (mode === 'light') {
-      root.classList.remove('dark');
-    } else {
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      if (prefersDark) root.classList.add('dark');
-      else root.classList.remove('dark');
-    }
-  };
 
   useEffect(() => {
     setMounted(true);
-    const saved = (localStorage.getItem('skipq_theme') as ThemeMode) || 'system';
-    setTheme(saved);
-    applyTheme(saved);
-
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    const handleChange = () => {
-      const current = localStorage.getItem('skipq_theme') as ThemeMode;
-      if (current === 'system' || !current) {
-        applyTheme('system');
-      }
-    };
-    mediaQuery.addEventListener('change', handleChange);
-    return () => mediaQuery.removeEventListener('change', handleChange);
+    const saved = localStorage.getItem('cv-theme');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    if (saved === 'dark' || (!saved && prefersDark)) {
+      setIsDark(true);
+      document.documentElement.classList.add('dark');
+    } else {
+      setIsDark(false);
+      document.documentElement.classList.remove('dark');
+    }
   }, []);
 
-  const handleSelect = (mode: ThemeMode) => {
-    setTheme(mode);
-    localStorage.setItem('skipq_theme', mode);
-    applyTheme(mode);
+  const toggleTheme = () => {
+    const next = !isDark;
+    setIsDark(next);
+    if (next) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('cv-theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('cv-theme', 'light');
+    }
   };
 
   if (!mounted) return null;
 
   return (
-    <div className="flex items-center p-0.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg">
-      <button
-        onClick={() => handleSelect('light')}
-        className={`p-1.5 rounded-md transition-colors ${
-          theme === 'light'
-            ? 'bg-white dark:bg-slate-700 text-amber-600 shadow-xs'
-            : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
-        }`}
-        title="Light Mode"
-      >
-        <Sun className="w-3.5 h-3.5" />
-      </button>
-
-      <button
-        onClick={() => handleSelect('dark')}
-        className={`p-1.5 rounded-md transition-colors ${
-          theme === 'dark'
-            ? 'bg-white dark:bg-slate-700 text-indigo-400 shadow-xs'
-            : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
-        }`}
-        title="Dark Mode"
-      >
-        <Moon className="w-3.5 h-3.5" />
-      </button>
-
-      <button
-        onClick={() => handleSelect('system')}
-        className={`p-1.5 rounded-md transition-colors ${
-          theme === 'system'
-            ? 'bg-white dark:bg-slate-700 text-teal-600 dark:text-teal-400 shadow-xs'
-            : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
-        }`}
-        title="System Default"
-      >
-        <Monitor className="w-3.5 h-3.5" />
-      </button>
-    </div>
+    <button
+      onClick={toggleTheme}
+      className="w-10 h-10 rounded-xl flex items-center justify-center bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-200 transition-all hover:scale-105 shadow-sm"
+      title="Toggle Theme"
+    >
+      {isDark ? <Sun className="w-5 h-5 text-amber-400" /> : <Moon className="w-5 h-5 text-slate-700" />}
+    </button>
   );
 }
