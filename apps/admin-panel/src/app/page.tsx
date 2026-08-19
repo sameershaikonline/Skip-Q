@@ -7,8 +7,18 @@ import {
   Plus,
   RefreshCw,
   LogOut,
-  ShieldCheck
+  ShieldCheck,
+  Trash2,
+  Stethoscope
 } from 'lucide-react';
+
+interface DoctorInput {
+  name: string;
+  designation: string;
+  imageUrl: string;
+  description: string;
+  fee: string;
+}
 
 interface Hospital {
   id: string;
@@ -23,6 +33,7 @@ interface Hospital {
   isGovernment?: boolean;
   status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'SUSPENDED';
   currentLiveToken?: string;
+  doctors?: Array<{ id: string; specialization: string; user?: { name: string; avatarUrl?: string } }>;
 }
 
 export default function AdminDashboardPage() {
@@ -44,6 +55,11 @@ export default function AdminDashboardPage() {
     isGovernment: false,
     isEmergency: true,
   });
+
+  // Dynamic Doctors List in Onboarding
+  const [doctorsList, setDoctorsList] = useState<DoctorInput[]>([
+    { name: '', designation: 'General Physician', imageUrl: '', description: '', fee: '300' },
+  ]);
 
   const [formSuccess, setFormSuccess] = useState('');
   const [formError, setFormError] = useState('');
@@ -79,6 +95,24 @@ export default function AdminDashboardPage() {
     router.push('/auth/login');
   };
 
+  const handleAddDoctorField = () => {
+    setDoctorsList([
+      ...doctorsList,
+      { name: '', designation: 'Specialist', imageUrl: '', description: '', fee: '300' },
+    ]);
+  };
+
+  const handleRemoveDoctorField = (index: number) => {
+    if (doctorsList.length === 1) return;
+    setDoctorsList(doctorsList.filter((_, i) => i !== index));
+  };
+
+  const handleDoctorChange = (index: number, field: keyof DoctorInput, value: string) => {
+    const updated = [...doctorsList];
+    updated[index][field] = value;
+    setDoctorsList(updated);
+  };
+
   const handleCreateHospital = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError('');
@@ -86,10 +120,15 @@ export default function AdminDashboardPage() {
     setSubmitting(true);
 
     try {
+      const payload = {
+        ...newHospital,
+        doctors: doctorsList.filter((d) => d.name.trim().length > 0),
+      };
+
       const res = await fetch('/api/admin/onboard-hospital', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newHospital),
+        body: JSON.stringify(payload),
       });
 
       const data = await res.json();
@@ -109,6 +148,9 @@ export default function AdminDashboardPage() {
         isGovernment: false,
         isEmergency: true,
       });
+      setDoctorsList([
+        { name: '', designation: 'General Physician', imageUrl: '', description: '', fee: '300' },
+      ]);
       fetchHospitals();
       setTimeout(() => setActiveTab('HOSPITALS'), 1500);
     } catch (err: any) {
@@ -222,13 +264,14 @@ export default function AdminDashboardPage() {
               <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Loading facilities...</p>
             </div>
           ) : hospitals.length === 0 ? (
-            <div className="p-8 text-center text-slate-500 text-xs space-y-3">
-              <p className="font-bold">No hospitals registered yet.</p>
+            <div className="p-12 text-center text-slate-500 text-xs space-y-4">
+              <p className="font-bold text-base text-slate-700 dark:text-slate-300">Clean slate: Zero hospitals registered in the database yet.</p>
+              <p className="text-xs text-slate-400">Click "+ Onboard Facility" above to add your first verified hospital with doctors.</p>
               <button
                 onClick={() => setActiveTab('MANUAL_ADD')}
-                className="px-6 py-3 bg-blue-600 text-white font-bold text-xs rounded-2xl shadow-lg shadow-blue-500/30"
+                className="px-6 py-3.5 bg-blue-600 hover:bg-blue-500 text-white font-black text-xs rounded-2xl shadow-lg shadow-blue-500/30 transition-all hover:scale-105"
               >
-                + Onboard First Hospital
+                + Onboard First Hospital Now
               </button>
             </div>
           ) : (
@@ -296,12 +339,12 @@ export default function AdminDashboardPage() {
         </div>
       )}
 
-      {/* TAB 2: Onboard Form */}
+      {/* TAB 2: Onboard Form with Doctors */}
       {activeTab === 'MANUAL_ADD' && (
-        <div className="glass p-8 md:p-10 rounded-[3rem] shadow-2xl space-y-6 max-w-2xl mx-auto">
+        <div className="glass p-8 md:p-10 rounded-[3rem] shadow-2xl space-y-6 max-w-3xl mx-auto">
           <div>
             <h2 className="text-2xl font-black text-slate-900 dark:text-white">Onboard Healthcare Facility</h2>
-            <p className="text-xs font-medium text-slate-500">Creates database record and emails reception login credentials</p>
+            <p className="text-xs font-medium text-slate-500">Creates database record, adds doctors, and emails reception login credentials</p>
           </div>
 
           {formSuccess && (
@@ -316,82 +359,90 @@ export default function AdminDashboardPage() {
             </div>
           )}
 
-          <form onSubmit={handleCreateHospital} className="space-y-4 text-xs font-bold">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-slate-700 dark:text-slate-300 mb-1">Facility Name</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="SatyaSri Hospital"
-                  value={newHospital.name}
-                  onChange={(e) => setNewHospital({ ...newHospital, name: e.target.value })}
-                  className="w-full p-3.5 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-2xl outline-none font-medium focus:border-blue-500 text-slate-900 dark:text-white"
-                />
-              </div>
-
-              <div>
-                <label className="block text-slate-700 dark:text-slate-300 mb-1">City / District</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Mahabubabad"
-                  value={newHospital.city}
-                  onChange={(e) => setNewHospital({ ...newHospital, city: e.target.value })}
-                  className="w-full p-3.5 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-2xl outline-none font-medium focus:border-blue-500 text-slate-900 dark:text-white"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-slate-700 dark:text-slate-300 mb-1">Address / Landmark</label>
-              <input
-                type="text"
-                required
-                placeholder="Main Road, Mahabubabad"
-                value={newHospital.address}
-                onChange={(e) => setNewHospital({ ...newHospital, address: e.target.value })}
-                className="w-full p-3.5 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-2xl outline-none font-medium focus:border-blue-500 text-slate-900 dark:text-white"
-              />
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-slate-700 dark:text-slate-300 mb-1">Reception Phone</label>
-                <input
-                  type="tel"
-                  required
-                  placeholder="9876543210"
-                  value={newHospital.contactNumber}
-                  onChange={(e) => setNewHospital({ ...newHospital, contactNumber: e.target.value })}
-                  className="w-full p-3.5 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-2xl outline-none font-medium focus:border-blue-500 text-slate-900 dark:text-white"
-                />
-              </div>
-
-              <div>
-                <label className="block text-slate-700 dark:text-slate-300 mb-1">Registration License</label>
-                <input
-                  type="text"
-                  placeholder="TS-MBD-001"
-                  value={newHospital.licenseNumber}
-                  onChange={(e) => setNewHospital({ ...newHospital, licenseNumber: e.target.value })}
-                  className="w-full p-3.5 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-2xl outline-none font-medium focus:border-blue-500 text-slate-900 dark:text-white"
-                />
-              </div>
-            </div>
-
-            <div className="p-5 glass rounded-2xl space-y-3">
+          <form onSubmit={handleCreateHospital} className="space-y-6 text-xs font-bold">
+            {/* Hospital Details */}
+            <div className="space-y-4">
               <span className="text-[11px] font-black text-blue-500 uppercase tracking-widest block">
-                RECEPTION LOGIN CREDENTIALS
+                🏥 Facility Information
               </span>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-700 dark:text-slate-300 mb-1">Authorized Email</label>
+                  <label className="block text-slate-700 dark:text-slate-300 mb-1">Facility Name *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Apollo / SatyaSri Hospital"
+                    value={newHospital.name}
+                    onChange={(e) => setNewHospital({ ...newHospital, name: e.target.value })}
+                    className="w-full p-3.5 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-2xl outline-none font-medium focus:border-blue-500 text-slate-900 dark:text-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-700 dark:text-slate-300 mb-1">City / District *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Mahabubabad"
+                    value={newHospital.city}
+                    onChange={(e) => setNewHospital({ ...newHospital, city: e.target.value })}
+                    className="w-full p-3.5 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-2xl outline-none font-medium focus:border-blue-500 text-slate-900 dark:text-white"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-slate-700 dark:text-slate-300 mb-1">Address / Landmark *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Main Road, Mahabubabad"
+                  value={newHospital.address}
+                  onChange={(e) => setNewHospital({ ...newHospital, address: e.target.value })}
+                  className="w-full p-3.5 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-2xl outline-none font-medium focus:border-blue-500 text-slate-900 dark:text-white"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-700 dark:text-slate-300 mb-1">Reception Phone *</label>
+                  <input
+                    type="tel"
+                    required
+                    placeholder="9876543210"
+                    value={newHospital.contactNumber}
+                    onChange={(e) => setNewHospital({ ...newHospital, contactNumber: e.target.value })}
+                    className="w-full p-3.5 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-2xl outline-none font-medium focus:border-blue-500 text-slate-900 dark:text-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-700 dark:text-slate-300 mb-1">Registration License</label>
+                  <input
+                    type="text"
+                    placeholder="TS-MBD-001"
+                    value={newHospital.licenseNumber}
+                    onChange={(e) => setNewHospital({ ...newHospital, licenseNumber: e.target.value })}
+                    className="w-full p-3.5 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-2xl outline-none font-medium focus:border-blue-500 text-slate-900 dark:text-white"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Reception Credentials */}
+            <div className="p-5 glass rounded-2xl space-y-3">
+              <span className="text-[11px] font-black text-blue-500 uppercase tracking-widest block">
+                🔑 RECEPTION LOGIN CREDENTIALS
+              </span>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-700 dark:text-slate-300 mb-1">Authorized Email *</label>
                   <input
                     type="email"
                     required
-                    placeholder="hospital@domain.com"
+                    placeholder="reception@hospital.com"
                     value={newHospital.email}
                     onChange={(e) => setNewHospital({ ...newHospital, email: e.target.value })}
                     className="w-full p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none font-medium focus:border-blue-500 text-slate-900 dark:text-white"
@@ -399,7 +450,7 @@ export default function AdminDashboardPage() {
                 </div>
 
                 <div>
-                  <label className="block text-slate-700 dark:text-slate-300 mb-1">Assigned Password</label>
+                  <label className="block text-slate-700 dark:text-slate-300 mb-1">Assigned Password *</label>
                   <input
                     type="password"
                     required
@@ -412,6 +463,104 @@ export default function AdminDashboardPage() {
               </div>
             </div>
 
+            {/* DYNAMIC DOCTORS ONBOARDING SECTION */}
+            <div className="p-6 glass rounded-[2.5rem] space-y-5 border-2 border-blue-500/20">
+              <div className="flex justify-between items-center">
+                <div>
+                  <span className="text-[11px] font-black text-blue-500 uppercase tracking-widest block">
+                    👨‍⚕️ ATTENDING DOCTORS & SPECIALISTS (OPTIONAL)
+                  </span>
+                  <p className="text-[11px] text-slate-500 font-normal">Add doctor names, designations, photos, and descriptions for this hospital</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleAddDoctorField}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-black text-xs rounded-xl shadow-md transition-all hover:scale-105"
+                >
+                  + Add Doctor
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                {doctorsList.map((doc, idx) => (
+                  <div key={idx} className="p-5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3 relative">
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs font-black text-slate-800 dark:text-slate-200">Doctor #{idx + 1}</span>
+                      {doctorsList.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveDoctorField(idx)}
+                          className="text-rose-500 hover:text-rose-700 p-1"
+                          title="Remove Doctor"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[11px] text-slate-600 dark:text-slate-400 mb-1">Doctor Name</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. Dr. Rajesh Kumar MD"
+                          value={doc.name}
+                          onChange={(e) => handleDoctorChange(idx, 'name', e.target.value)}
+                          className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none font-medium text-slate-900 dark:text-white"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] text-slate-600 dark:text-slate-400 mb-1">Designation / Specialty</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. Senior Cardiologist / Pediatrician"
+                          value={doc.designation}
+                          onChange={(e) => handleDoctorChange(idx, 'designation', e.target.value)}
+                          className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none font-medium text-slate-900 dark:text-white"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[11px] text-slate-600 dark:text-slate-400 mb-1">Photo Image URL (Optional)</label>
+                        <input
+                          type="url"
+                          placeholder="https://example.com/doctor-photo.jpg"
+                          value={doc.imageUrl}
+                          onChange={(e) => handleDoctorChange(idx, 'imageUrl', e.target.value)}
+                          className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none font-medium text-slate-900 dark:text-white"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] text-slate-600 dark:text-slate-400 mb-1">Consultation Fee (₹)</label>
+                        <input
+                          type="number"
+                          placeholder="300"
+                          value={doc.fee}
+                          onChange={(e) => handleDoctorChange(idx, 'fee', e.target.value)}
+                          className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none font-medium text-slate-900 dark:text-white"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] text-slate-600 dark:text-slate-400 mb-1">Description / Bio (Optional)</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. 12+ years experience in cardiac diagnostics and preventive care."
+                        value={doc.description}
+                        onChange={(e) => handleDoctorChange(idx, 'description', e.target.value)}
+                        className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none font-medium text-slate-900 dark:text-white"
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
             <button
               type="submit"
               disabled={submitting}
@@ -420,10 +569,10 @@ export default function AdminDashboardPage() {
               {submitting ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  <span>Onboarding Facility & Sending Credentials...</span>
+                  <span>Onboarding Facility & Adding Doctors...</span>
                 </>
               ) : (
-                'Onboard Facility & Dispatch Email ➔'
+                'Onboard Facility & Deploy to Live Network ➔'
               )}
             </button>
           </form>

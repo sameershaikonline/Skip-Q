@@ -89,23 +89,56 @@ export async function POST(req: Request) {
     if (!existingDept) {
       const dept = await prisma.department.create({
         data: {
-          name: 'General Medicine',
-          description: 'Comprehensive OPD and emergency consultation',
+          name: 'General OPD',
+          description: 'Comprehensive outpatient care',
           hospitalId: hospital.id,
         },
       });
       deptId = dept.id;
     }
 
-    // 5. Create default Duty Doctor if none exists
-    const existingDoctor = await prisma.doctor.findFirst({
-      where: { hospitalId: hospital.id },
-    });
+    // 5. Create Doctors from data.doctors list (if provided), or default duty doctor
+    if (Array.isArray(data.doctors) && data.doctors.length > 0) {
+      for (const doc of data.doctors) {
+        if (!doc.name?.trim()) continue;
 
-    if (!existingDoctor && deptId) {
+        const docEmail = doc.email?.trim().toLowerCase() || `doc.${Date.now()}.${Math.floor(Math.random() * 1000)}@skipq.in`;
+        const docUser = await prisma.user.upsert({
+          where: { email: docEmail },
+          update: {
+            name: doc.name.trim(),
+            avatarUrl: doc.imageUrl?.trim() || null,
+          },
+          create: {
+            name: doc.name.trim(),
+            email: docEmail,
+            password: passwordHash,
+            role: 'DOCTOR',
+            avatarUrl: doc.imageUrl?.trim() || null,
+            isVerified: true,
+          },
+        });
+
+        await prisma.doctor.create({
+          data: {
+            userId: docUser.id,
+            hospitalId: hospital.id,
+            departmentId: deptId!,
+            specialization: doc.designation?.trim() || 'General Physician',
+            qualification: doc.qualification?.trim() || 'MBBS',
+            bio: doc.description?.trim() || null,
+            experience: Number(doc.experience) || 5,
+            fee: Number(doc.fee) || 300,
+            roomNo: doc.roomNo?.trim() || 'OPD Room 1',
+            availableTime: '09:00 AM - 02:00 PM',
+          },
+        });
+      }
+    } else {
+      // Default Doctor
       const docUser = await prisma.user.create({
         data: {
-          name: 'Dr. Duty Specialist MD',
+          name: 'Duty Specialist Doctor',
           email: `doc.${Date.now()}@skipq.in`,
           password: passwordHash,
           role: 'DOCTOR',
@@ -117,7 +150,7 @@ export async function POST(req: Request) {
         data: {
           userId: docUser.id,
           hospitalId: hospital.id,
-          departmentId: deptId,
+          departmentId: deptId!,
           specialization: 'General Physician',
           qualification: 'MBBS, MD',
           experience: 5,
@@ -173,26 +206,19 @@ export async function POST(req: Request) {
           html: htmlEmail,
         });
       } catch (mailErr) {
-        console.warn('Mail dispatch error:', mailErr);
+        console.warn('Hospital notification email delivery skipped:', mailErr);
       }
     }
 
     return NextResponse.json({
-      message: `Hospital "${hospital.name}" onboarded and saved to Supabase successfully!`,
+      message: 'Hospital and doctors onboarded successfully into database',
       hospital,
-      adminUser: {
-        email: cleanEmail,
-        initialPassword: cleanPassword,
-      },
-    }, {
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, POST, PATCH, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-      },
     });
-  } catch (err: any) {
-    console.error('Super Admin Onboard Error:', err);
-    return NextResponse.json({ message: err.message || 'Failed to onboard hospital' }, { status: 500 });
+  } catch (error: any) {
+    console.error('Onboarding hospital failed:', error);
+    return NextResponse.json(
+      { message: error.message || 'Failed to onboard hospital' },
+      { status: 500 }
+    );
   }
 }

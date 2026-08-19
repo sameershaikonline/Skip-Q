@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Activity, LogOut, User } from 'lucide-react';
+import { LogOut } from 'lucide-react';
 import ThemeToggle from '@/components/ThemeToggle';
 
 export default function Header() {
@@ -51,24 +51,15 @@ export default function Header() {
             </span>
           </Link>
 
-          {/* Navigation Links */}
-          <div className="hidden md:flex items-center space-x-1">
-            <Link
-              href="/"
-              className={`px-4 py-2 rounded-xl text-sm font-bold transition-all hover:bg-slate-100 dark:hover:bg-slate-800 ${
-                pathname === '/' ? 'text-blue-600 dark:text-blue-400 bg-blue-500/10' : 'text-slate-700 dark:text-slate-300'
-              }`}
-            >
-              Hospitals & Clinics
-            </Link>
-
+          {/* Clean minimal navigation without redundant hospital tabs */}
+          <div className="hidden md:flex items-center space-x-2">
             <Link
               href="/dashboard"
               className={`px-4 py-2 rounded-xl text-sm font-bold transition-all hover:bg-slate-100 dark:hover:bg-slate-800 ${
                 pathname === '/dashboard' ? 'text-blue-600 dark:text-blue-400 bg-blue-500/10' : 'text-slate-700 dark:text-slate-300'
               }`}
             >
-              Live Queue Tracker
+              My Live Queue
             </Link>
           </div>
 

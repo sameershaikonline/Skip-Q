@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   Search,
@@ -9,8 +10,6 @@ import {
   Phone,
   ShieldCheck,
   Stethoscope,
-  ArrowRight,
-  Activity,
   X
 } from 'lucide-react';
 
@@ -32,19 +31,32 @@ interface Hospital {
     id: string;
     specialization: string;
     qualification?: string;
+    bio?: string;
     fee?: number;
     roomNo?: string;
-    user?: { name: string };
+    user?: { name: string; avatarUrl?: string };
     name?: string;
   }>;
 }
 
 export default function PatientHomePage() {
+  const router = useRouter();
+  const [authChecking, setAuthChecking] = useState(true);
   const [selectedLocation, setSelectedLocation] = useState<string>('Mahabubabad');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedDeptFilter, setSelectedDeptFilter] = useState<string>('ALL');
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+
+  useEffect(() => {
+    // 1. Strict Authentication Check: Must be authenticated to view hospital live queues
+    const token = localStorage.getItem('token');
+    if (!token) {
+      router.push('/auth/login');
+      return;
+    }
+    setAuthChecking(false);
+  }, []);
 
   const fetchHospitals = () => {
     fetch('/api/hospitals')
@@ -84,9 +96,20 @@ export default function PatientHomePage() {
     );
   });
 
+  if (authChecking) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
+        <div className="loader-ring"></div>
+        <p className="font-black animate-pulse text-slate-500 uppercase tracking-widest text-xs">
+          Verifying Patient Authentication...
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-12 pb-24 max-w-7xl mx-auto px-4 py-8">
-      {/* CyberVerify Inspired Hero */}
+      {/* CyberVerify Hero */}
       <div className="text-center mb-12 space-y-6 animate-in fade-in duration-700">
         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full glass text-blue-500 dark:text-blue-400 text-xs font-black shadow-lg shadow-blue-500/10">
           <span className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse" />
@@ -102,7 +125,7 @@ export default function PatientHomePage() {
           View exact in-room consultation numbers and generate digital tokens before reaching the clinic.
         </p>
 
-        {/* Glass Search & Region Selector */}
+        {/* Glass Search & Location Selector */}
         <div className="max-w-2xl mx-auto p-3 glass rounded-[2rem] shadow-2xl flex flex-col sm:flex-row items-center gap-3">
           <div className="flex items-center gap-2 px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 border-b sm:border-b-0 sm:border-r border-slate-200 dark:border-slate-800 w-full sm:w-auto shrink-0">
             <MapPin className="w-4 h-4 text-blue-500" />
@@ -167,9 +190,6 @@ export default function PatientHomePage() {
       <section className="space-y-6">
         {!isServedCity ? (
           <div className="glass p-10 rounded-[3rem] text-center space-y-4 max-w-lg mx-auto shadow-2xl">
-            <div className="w-14 h-14 bg-gradient-to-tr from-amber-500 to-orange-500 rounded-2xl flex items-center justify-center mx-auto text-white shadow-lg">
-              <MapPin className="w-7 h-7" />
-            </div>
             <h3 className="text-2xl font-black text-slate-900 dark:text-white">
               Not Live in {selectedLocation}
             </h3>
@@ -200,8 +220,10 @@ export default function PatientHomePage() {
               </div>
             ) : filteredHospitals.length === 0 ? (
               <div className="glass p-12 rounded-[3rem] text-center space-y-4 max-w-md mx-auto shadow-xl">
-                <h3 className="text-xl font-bold text-slate-900 dark:text-white">No Hospitals Found</h3>
-                <p className="text-xs text-slate-500">No active clinics found matching your search.</p>
+                <h3 className="text-xl font-bold text-slate-900 dark:text-white">No Hospitals Registered Yet</h3>
+                <p className="text-xs text-slate-500">
+                  Clean slate: Add facilities via the Super Admin Hub to begin issuing live OPD tokens.
+                </p>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8">

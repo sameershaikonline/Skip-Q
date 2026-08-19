@@ -17,11 +17,12 @@ interface Doctor {
   name?: string;
   specialization: string;
   qualification?: string;
+  bio?: string;
   experience?: number | string;
   roomNo?: string;
   fee?: number;
   availableTime?: string;
-  user?: { name: string; email: string; phone?: string };
+  user?: { name: string; email: string; phone?: string; avatarUrl?: string };
 }
 
 interface HospitalDetail {
@@ -46,6 +47,7 @@ export default function HospitalDetailPage() {
   const router = useRouter();
   const hospitalId = params?.id as string;
 
+  const [authChecking, setAuthChecking] = useState(true);
   const [hospital, setHospital] = useState<HospitalDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
@@ -64,6 +66,15 @@ export default function HospitalDetailPage() {
     doctorName: string;
     timeSlot: string;
   } | null>(null);
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      router.push('/auth/login');
+      return;
+    }
+    setAuthChecking(false);
+  }, []);
 
   const fetchHospitalDetails = () => {
     if (!hospitalId) return;
@@ -158,7 +169,7 @@ export default function HospitalDetailPage() {
     }, 1000);
   };
 
-  if (loading) {
+  if (authChecking || loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
         <div className="loader-ring"></div>
@@ -182,7 +193,7 @@ export default function HospitalDetailPage() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 space-y-8 pb-24">
-      {/* Fullscreen Animation Overlay (CyberVerify Style) */}
+      {/* Fullscreen Animation Overlay */}
       {showAnimation && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center backdrop-blur-2xl bg-blue-600/90 transition-all duration-500 animate-in fade-in">
           <div className="text-center p-8 text-white space-y-4 animate-bounce-subtle">
@@ -241,15 +252,16 @@ export default function HospitalDetailPage() {
         <div className="lg:col-span-2 space-y-6">
           <div className="glass p-8 rounded-[3rem] shadow-xl space-y-4">
             <h2 className="text-2xl font-black text-slate-900 dark:text-white">
-              Available Doctors
+              Available Doctors ({hospital.doctors?.length || 0})
             </h2>
 
             {(!hospital.doctors || hospital.doctors.length === 0) ? (
               <p className="text-sm text-slate-500">General OPD Physician is on duty.</p>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {hospital.doctors.map((doc) => {
                   const docName = doc.user?.name || doc.name || 'Practitioner';
+                  const docAvatar = doc.user?.avatarUrl;
                   const isSelected = selectedDoctor?.id === doc.id;
                   return (
                     <div
@@ -261,23 +273,42 @@ export default function HospitalDetailPage() {
                           : 'border-slate-200 dark:border-slate-800 glass hover:border-blue-400'
                       }`}
                     >
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <Stethoscope className="w-5 h-5 text-blue-500" />
-                          <h3 className="text-lg font-black text-slate-900 dark:text-white">{docName}</h3>
-                          {isSelected && (
-                            <span className="text-[10px] font-black bg-blue-600 text-white px-2.5 py-0.5 rounded-full">
-                              Selected
-                            </span>
+                      <div className="flex items-center gap-4">
+                        {docAvatar ? (
+                          <img
+                            src={docAvatar}
+                            alt={docName}
+                            className="w-14 h-14 rounded-2xl object-cover border-2 border-blue-500 shadow-md shrink-0"
+                            onError={(e) => { (e.target as any).style.display = 'none'; }}
+                          />
+                        ) : (
+                          <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-700 text-white flex items-center justify-center shadow-md shrink-0 font-black text-lg">
+                            {docName.slice(0, 2).toUpperCase()}
+                          </div>
+                        )}
+
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-lg font-black text-slate-900 dark:text-white">{docName}</h3>
+                            {isSelected && (
+                              <span className="text-[10px] font-black bg-blue-600 text-white px-2.5 py-0.5 rounded-full">
+                                Selected
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs font-bold text-blue-500">
+                            {doc.specialization} • {doc.qualification || 'MBBS'}
+                          </p>
+                          {doc.bio && (
+                            <p className="text-[11px] text-slate-500 dark:text-slate-400 max-w-md line-clamp-2">
+                              {doc.bio}
+                            </p>
                           )}
                         </div>
-                        <p className="text-xs font-bold text-slate-500">
-                          {doc.specialization} • {doc.qualification || 'MBBS'}
-                        </p>
                       </div>
 
                       <div className="text-left sm:text-right shrink-0">
-                        <span className="text-[11px] font-bold text-slate-400 block">Fee</span>
+                        <span className="text-[11px] font-bold text-slate-400 block">Consultation</span>
                         <span className="text-base font-black text-slate-900 dark:text-white">₹{doc.fee || 300}</span>
                       </div>
                     </div>
@@ -288,7 +319,7 @@ export default function HospitalDetailPage() {
           </div>
         </div>
 
-        {/* Right: Booking Form or Result Card */}
+        {/* Right: Booking Form */}
         <div className="space-y-6">
           {confirmedToken ? (
             <div className="glass p-8 rounded-[3rem] shadow-2xl text-center space-y-6 border-2 border-blue-500">

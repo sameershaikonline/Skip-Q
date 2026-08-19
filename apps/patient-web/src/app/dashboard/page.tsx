@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, CheckCircle2 } from 'lucide-react';
 
 interface TokenInfo {
   tokenNumber: string;
@@ -24,9 +24,20 @@ interface Appointment {
 }
 
 export default function PatientDashboard() {
+  const router = useRouter();
+  const [authChecking, setAuthChecking] = useState(true);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [userName, setUserName] = useState('Patient');
   const [activeLiveToken, setActiveLiveToken] = useState<number>(1);
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      router.push('/auth/login');
+      return;
+    }
+    setAuthChecking(false);
+  }, []);
 
   const loadAppointments = () => {
     try {
@@ -60,6 +71,17 @@ export default function PatientDashboard() {
     return () => clearInterval(interval);
   }, []);
 
+  if (authChecking) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
+        <div className="loader-ring"></div>
+        <p className="font-black animate-pulse text-slate-500 uppercase tracking-widest text-xs">
+          Verifying Patient Session...
+        </p>
+      </div>
+    );
+  }
+
   const activeAppt = appointments[0];
   const userTokenNum = activeAppt?.token?.tokenNumber ? Number(activeAppt.token.tokenNumber) : null;
   const tokensAhead = userTokenNum ? Math.max(0, userTokenNum - activeLiveToken) : 0;
@@ -86,7 +108,7 @@ export default function PatientDashboard() {
       </div>
 
       {/* Live Countdown Display */}
-      {activeAppt && (
+      {activeAppt ? (
         <div className="glass p-8 md:p-10 rounded-[3rem] shadow-2xl space-y-8 border-2 border-blue-500/20">
           <div className="text-center space-y-2">
             <span className="text-xs font-black uppercase tracking-widest text-blue-500">
@@ -133,6 +155,17 @@ export default function PatientDashboard() {
               </span>
             </div>
           </div>
+        </div>
+      ) : (
+        <div className="glass p-12 rounded-[3rem] text-center space-y-4 shadow-xl">
+          <h3 className="text-xl font-bold text-slate-900 dark:text-white">No Active Tokens</h3>
+          <p className="text-xs text-slate-500">You don't have any live consultations in queue.</p>
+          <Link
+            href="/"
+            className="px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-2xl shadow-lg shadow-blue-500/30 inline-block transition-all hover:scale-105"
+          >
+            Find Clinic & Book Token ➔
+          </Link>
         </div>
       )}
 
