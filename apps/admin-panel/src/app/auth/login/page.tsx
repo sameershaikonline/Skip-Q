@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { Shield, Lock, Mail } from 'lucide-react';
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -25,7 +26,7 @@ export default function AdminLoginPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.message || 'Super Admin login failed');
+        throw new Error(data.message || 'Super Admin authentication failed');
       }
 
       if (data.token) {
@@ -34,7 +35,7 @@ export default function AdminLoginPage() {
         router.push('/');
       }
     } catch (err: any) {
-      setError(err.message || 'Invalid Super Admin credentials');
+      setError(err.message || 'Invalid administrator credentials');
     } finally {
       setLoading(false);
     }
@@ -42,58 +43,58 @@ export default function AdminLoginPage() {
 
   return (
     <div className="max-w-md mx-auto my-16 px-4 space-y-6">
-      <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-md space-y-6">
-        <div className="text-center space-y-2">
-          <div className="w-12 h-12 mx-auto rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-700 text-2xl font-bold">
-            👑
+      <div className="bg-white p-8 rounded-xl border border-slate-200 shadow-sm space-y-6">
+        <div className="space-y-1 text-center">
+          <div className="w-10 h-10 mx-auto rounded-lg bg-slate-900 flex items-center justify-center text-white">
+            <Shield className="w-5 h-5 text-indigo-400" />
           </div>
-          <h1 className="text-2xl font-black text-slate-900">Super Admin Control Hub</h1>
-          <p className="text-xs text-slate-500">Platform Governance & Hospital Verification</p>
+          <h1 className="text-xl font-bold text-slate-900 pt-2">Super Admin Control Hub</h1>
+          <p className="text-xs text-slate-500">Platform Governance & Database Management</p>
         </div>
 
         {error && (
-          <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 font-medium text-center">
+          <div className="p-3 bg-rose-50 border border-rose-200 rounded-lg text-xs text-rose-700">
             {error}
           </div>
         )}
 
         <form onSubmit={handleLogin} className="space-y-4 text-xs">
           <div>
-            <label className="block font-bold text-slate-700 mb-1">Admin Master Email *</label>
+            <label className="block font-medium text-slate-700 mb-1">Master Email</label>
             <input
               type="email"
               required
               placeholder="sameershaikonline@gmail.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:border-indigo-600 focus:bg-white transition-colors"
+              className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 focus:outline-none focus:border-slate-900 focus:bg-white"
             />
           </div>
 
           <div>
-            <label className="block font-bold text-slate-700 mb-1">Password *</label>
+            <label className="block font-medium text-slate-700 mb-1">Password</label>
             <input
               type="password"
               required
               placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:border-indigo-600 focus:bg-white transition-colors"
+              className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 focus:outline-none focus:border-slate-900 focus:bg-white"
             />
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+            className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-medium text-xs rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {loading ? (
               <>
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                <span>Authenticating Master Session...</span>
+                <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <span>Verifying Authorization...</span>
               </>
             ) : (
-              'Sign In to Super Admin Console ➔'
+              <span>Sign In to Governance Console</span>
             )}
           </button>
         </form>

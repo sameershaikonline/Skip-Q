@@ -3,6 +3,20 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import {
+  Building2,
+  MapPin,
+  Phone,
+  Clock,
+  ShieldCheck,
+  Stethoscope,
+  CheckCircle2,
+  Calendar,
+  User,
+  ArrowLeft,
+  Activity,
+  AlertCircle
+} from 'lucide-react';
 
 interface Doctor {
   id: string;
@@ -94,7 +108,6 @@ export default function HospitalDetailPage() {
     e.preventDefault();
     setBookingLoading(true);
 
-    // Calculate next token #
     const currentNum = Number(hospital?.currentLiveToken) || 1;
     const assignedTokenNum = String(currentNum + Math.floor(Math.random() * 3) + 1);
     const estMinutes = 15;
@@ -111,7 +124,6 @@ export default function HospitalDetailPage() {
       appointmentDate: selectedDate,
     };
 
-    // Save to user's local booked appointments
     try {
       const existing = JSON.parse(localStorage.getItem('my_appointments') || '[]');
       existing.unshift({
@@ -134,129 +146,135 @@ export default function HospitalDetailPage() {
     setTimeout(() => {
       setBookingLoading(false);
       setConfirmedToken(tokenObj);
-    }, 1000);
+    }, 800);
   };
 
   if (loading) {
     return (
-      <div className="max-w-md mx-auto my-32 text-center space-y-4">
-        <div className="w-12 h-12 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin mx-auto" />
-        <p className="text-xs font-semibold text-slate-600">Connecting to hospital live queue...</p>
+      <div className="max-w-md mx-auto my-32 text-center space-y-3">
+        <div className="w-6 h-6 border-2 border-teal-700 border-t-transparent rounded-full animate-spin mx-auto" />
+        <p className="text-xs text-slate-500 font-medium">Connecting to facility...</p>
       </div>
     );
   }
 
   if (!hospital) {
     return (
-      <div className="max-w-md mx-auto my-32 p-8 bg-white border border-slate-200 rounded-3xl text-center space-y-4 shadow-sm">
-        <span className="text-4xl block">🏥</span>
-        <h2 className="text-lg font-bold text-slate-900">Hospital Profile Not Found</h2>
-        <p className="text-xs text-slate-500">The requested clinic is either suspended or pending approval.</p>
-        <Link href="/" className="px-4 py-2 bg-emerald-600 text-white font-bold text-xs rounded-xl shadow inline-block">
-          ← Return to Hospitals Directory
+      <div className="max-w-md mx-auto my-32 p-8 bg-white border border-slate-200 rounded-xl text-center space-y-3">
+        <AlertCircle className="w-8 h-8 text-slate-400 mx-auto" />
+        <h2 className="text-sm font-semibold text-slate-900">Hospital Not Found</h2>
+        <p className="text-xs text-slate-500">The facility is inactive or undergoing verification.</p>
+        <Link href="/" className="px-4 py-2 bg-slate-900 text-white text-xs font-medium rounded-lg inline-block">
+          Return to Directory
         </Link>
       </div>
     );
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 pb-24">
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
-        <Link href="/" className="hover:text-emerald-600">Hospitals Directory</Link>
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6 pb-20">
+      {/* Breadcrumb Navigation */}
+      <div className="flex items-center gap-2 text-xs text-slate-500">
+        <Link href="/" className="hover:text-teal-700 flex items-center gap-1">
+          <ArrowLeft className="w-3.5 h-3.5" />
+          <span>Hospitals</span>
+        </Link>
         <span>/</span>
-        <span className="text-slate-900 font-bold">{hospital.name}</span>
+        <span className="text-slate-900 font-medium">{hospital.name}</span>
       </div>
 
-      {/* Hospital Hero Banner */}
-      <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-sm space-y-6">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-          <div className="space-y-2">
+      {/* Facility Header Card */}
+      <div className="bg-white rounded-xl border border-slate-200 p-6 space-y-4">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <span className="px-2.5 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded-md">
-                Verified Medical Partner
+              <span className="px-2 py-0.5 bg-slate-100 text-slate-700 text-[10px] font-semibold rounded border border-slate-200">
+                {hospital.isGovernment ? 'Government Institution' : 'Private Facility'}
               </span>
               {hospital.isEmergency && (
-                <span className="px-2.5 py-0.5 bg-rose-100 text-rose-800 text-[10px] font-bold rounded-md">
-                  🚨 24/7 Emergency
+                <span className="px-2 py-0.5 bg-rose-50 text-rose-700 text-[10px] font-semibold rounded border border-rose-200">
+                  24/7 Emergency
                 </span>
               )}
             </div>
-
-            <h1 className="text-2xl sm:text-3xl font-black text-slate-900">{hospital.name}</h1>
-            <p className="text-xs text-slate-500">
-              📍 {hospital.address}, {hospital.city} • 📞 {hospital.contactNumber}
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl sm:text-2xl font-bold text-slate-900">{hospital.name}</h1>
+              <ShieldCheck className="w-5 h-5 text-teal-700" />
+            </div>
+            <p className="text-xs text-slate-500 flex items-center gap-1">
+              <MapPin className="w-3.5 h-3.5 text-slate-400" />
+              <span>{hospital.address}, {hospital.city}</span>
+              <span className="mx-1">•</span>
+              <Phone className="w-3.5 h-3.5 text-slate-400" />
+              <span>{hospital.contactNumber}</span>
             </p>
           </div>
 
-          {/* REAL-TIME LIVE TOKEN BEACON */}
-          <div className="p-5 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center gap-5 shrink-0 shadow-sm">
-            <div className="relative flex h-4 w-4">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-4 w-4 bg-emerald-600"></span>
-            </div>
+          {/* Live Token Indicator */}
+          <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg flex items-center gap-4 shrink-0">
+            <div className="w-2.5 h-2.5 rounded-full bg-teal-600 animate-pulse" />
             <div>
-              <span className="text-[10px] uppercase font-black text-emerald-900 tracking-wider block">
-                NOW IN DOCTOR ROOM
+              <span className="text-[10px] uppercase font-semibold text-slate-500 tracking-wider block">
+                Ongoing Token in Room
               </span>
-              <div className="text-3xl font-mono font-black text-emerald-700">
-                Token #{hospital.currentLiveToken || '1'}
+              <div className="text-2xl font-mono font-bold text-slate-900">
+                #{hospital.currentLiveToken || '1'}
               </div>
-              <span className="text-[10px] font-semibold text-emerald-800">● Live Reception Broadcast</span>
+              <span className="text-[10px] text-slate-500">Live Counter</span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Main Grid: Doctors & Instant OPD Token Booking */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Left 2 Cols: Doctors List */}
-        <div className="lg:col-span-2 space-y-6">
-          <div className="bg-white rounded-2xl border border-slate-200 p-6 space-y-4 shadow-sm">
-            <h2 className="text-base font-bold text-slate-900 border-b border-slate-100 pb-3">
-              Available Doctors & OPD Specialists
+      {/* Grid: Doctors & Token Generation */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left: Doctors List */}
+        <div className="lg:col-span-2 space-y-4">
+          <div className="bg-white rounded-xl border border-slate-200 p-5 space-y-3">
+            <h2 className="text-sm font-semibold text-slate-900 border-b border-slate-100 pb-2.5">
+              Available Practitioners
             </h2>
 
             {(!hospital.doctors || hospital.doctors.length === 0) ? (
-              <div className="p-8 text-center text-xs text-slate-500">
-                <p>General OPD Doctor is on duty today.</p>
+              <div className="p-6 text-center text-xs text-slate-500">
+                General Duty Physician is currently attending OPD.
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-2.5">
                 {hospital.doctors.map((doc) => {
-                  const docName = doc.user?.name || doc.name || 'Specialist Doctor';
+                  const docName = doc.user?.name || doc.name || 'Practitioner';
                   const isSelected = selectedDoctor?.id === doc.id;
                   return (
                     <div
                       key={doc.id}
                       onClick={() => setSelectedDoctor(doc)}
-                      className={`p-4 rounded-xl border transition-all cursor-pointer flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 ${
+                      className={`p-3.5 rounded-lg border transition-all cursor-pointer flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 ${
                         isSelected
-                          ? 'border-emerald-600 bg-emerald-50/50 shadow-sm'
+                          ? 'border-teal-700 bg-teal-50/40'
                           : 'border-slate-200 bg-white hover:border-slate-300'
                       }`}
                     >
-                      <div className="space-y-1">
+                      <div className="space-y-0.5">
                         <div className="flex items-center gap-2">
-                          <span className="text-lg">👨‍⚕️</span>
-                          <h3 className="text-sm font-bold text-slate-900">{docName}</h3>
+                          <Stethoscope className="w-4 h-4 text-teal-700" />
+                          <h3 className="text-xs font-semibold text-slate-900">{docName}</h3>
                           {isSelected && (
-                            <span className="text-[10px] font-bold bg-emerald-600 text-white px-2 py-0.5 rounded-full">
+                            <span className="text-[10px] font-medium bg-teal-700 text-white px-2 py-0.2 rounded">
                               Selected
                             </span>
                           )}
                         </div>
                         <p className="text-xs text-slate-600">
-                          {doc.specialization} • {doc.qualification || 'MBBS, MD'}
+                          {doc.specialization} • {doc.qualification || 'MBBS'}
                         </p>
-                        <p className="text-[11px] text-slate-500">
-                          Room: {doc.roomNo || 'OPD Room 1'} • Hours: {doc.availableTime || '09:00 AM - 02:00 PM'}
+                        <p className="text-[11px] text-slate-400">
+                          Room: {doc.roomNo || 'Room 1'} • Schedule: {doc.availableTime || '09:00 AM - 02:00 PM'}
                         </p>
                       </div>
 
                       <div className="text-left sm:text-right shrink-0">
-                        <span className="text-xs text-slate-400 block">OPD Consultation</span>
-                        <span className="text-sm font-bold text-slate-900">₹{doc.fee || 300}</span>
+                        <span className="text-[11px] text-slate-400 block">Consultation Fee</span>
+                        <span className="text-xs font-semibold text-slate-900">₹{doc.fee || 300}</span>
                       </div>
                     </div>
                   );
@@ -266,25 +284,23 @@ export default function HospitalDetailPage() {
           </div>
         </div>
 
-        {/* Right Col: Instant Booking Form / Confirmed Token */}
-        <div className="space-y-6">
+        {/* Right: Booking Form */}
+        <div className="space-y-4">
           {confirmedToken ? (
-            <div className="bg-white rounded-3xl border-2 border-emerald-600 p-6 shadow-md space-y-5 text-center">
-              <div className="w-14 h-14 bg-emerald-100 rounded-full flex items-center justify-center text-3xl mx-auto">
-                🎉
-              </div>
+            <div className="bg-white rounded-xl border border-teal-700 p-5 space-y-4 text-center">
+              <CheckCircle2 className="w-10 h-10 text-teal-700 mx-auto" />
               <div>
-                <span className="text-[10px] uppercase font-bold text-emerald-800 tracking-wider">
-                  BOOKING CONFIRMED
+                <span className="text-[10px] uppercase font-semibold text-teal-800 tracking-wider">
+                  Registration Successful
                 </span>
-                <h3 className="text-xl font-extrabold text-slate-900">Your Digital OPD Token</h3>
+                <h3 className="text-base font-bold text-slate-900">Digital Outpatient Token</h3>
               </div>
 
-              <div className="p-6 bg-slate-900 rounded-2xl text-white space-y-1">
-                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">
-                  ASSIGNED TOKEN NUMBER
+              <div className="p-4 bg-slate-900 rounded-lg text-white space-y-1">
+                <span className="text-[10px] text-slate-400 font-medium uppercase tracking-wider block">
+                  Token Number
                 </span>
-                <div className="text-5xl font-mono font-black text-emerald-400">
+                <div className="text-4xl font-mono font-bold text-teal-400">
                   #{confirmedToken.tokenNumber}
                 </div>
                 <span className="text-xs text-slate-300 block pt-1">
@@ -292,57 +308,57 @@ export default function HospitalDetailPage() {
                 </span>
               </div>
 
-              <div className="text-xs text-slate-600 space-y-1.5 text-left p-3 bg-slate-50 rounded-xl border border-slate-200">
-                <p><strong>Doctor:</strong> {confirmedToken.doctorName}</p>
-                <p><strong>Time Slot:</strong> {confirmedToken.timeSlot}</p>
-                <p><strong>Patient:</strong> {patientName}</p>
+              <div className="text-xs text-slate-600 space-y-1 text-left p-3 bg-slate-50 rounded-lg border border-slate-200">
+                <p><span className="text-slate-400">Doctor:</span> {confirmedToken.doctorName}</p>
+                <p><span className="text-slate-400">Slot:</span> {confirmedToken.timeSlot}</p>
+                <p><span className="text-slate-400">Patient:</span> {patientName}</p>
               </div>
 
               <Link
                 href="/dashboard"
-                className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow block transition-colors"
+                className="w-full py-2 bg-teal-700 hover:bg-teal-800 text-white font-medium text-xs rounded-lg block transition-colors"
               >
-                Go to Live Queue Tracker ➔
+                Track Live Queue Position
               </Link>
             </div>
           ) : (
-            <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
-              <div className="border-b border-slate-100 pb-3">
-                <h3 className="text-base font-bold text-slate-900">Book OPD Token</h3>
-                <p className="text-xs text-slate-500">Get an instant digital token for today</p>
+            <div className="bg-white rounded-xl border border-slate-200 p-5 space-y-4">
+              <div className="border-b border-slate-100 pb-2.5">
+                <h3 className="text-sm font-semibold text-slate-900">Issue Outpatient Token</h3>
+                <p className="text-xs text-slate-500">Provide patient details for queue registration</p>
               </div>
 
-              <form onSubmit={handleBookToken} className="space-y-4 text-xs">
+              <form onSubmit={handleBookToken} className="space-y-3.5 text-xs">
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Patient Full Name *</label>
+                  <label className="block font-medium text-slate-700 mb-1">Patient Full Name</label>
                   <input
                     type="text"
                     required
-                    placeholder="Enter patient name"
+                    placeholder="Enter full name"
                     value={patientName}
                     onChange={(e) => setPatientName(e.target.value)}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:border-emerald-600 focus:bg-white"
+                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 focus:outline-none focus:border-teal-700 focus:bg-white"
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-2.5">
                   <div>
-                    <label className="block font-bold text-slate-700 mb-1">Age *</label>
+                    <label className="block font-medium text-slate-700 mb-1">Age</label>
                     <input
                       type="number"
                       required
-                      placeholder="e.g. 28"
+                      placeholder="e.g. 32"
                       value={patientAge}
                       onChange={(e) => setPatientAge(e.target.value)}
-                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:border-emerald-600 focus:bg-white"
+                      className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 focus:outline-none focus:border-teal-700 focus:bg-white"
                     />
                   </div>
                   <div>
-                    <label className="block font-bold text-slate-700 mb-1">Gender</label>
+                    <label className="block font-medium text-slate-700 mb-1">Gender</label>
                     <select
                       value={patientGender}
                       onChange={(e) => setPatientGender(e.target.value)}
-                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:border-emerald-600 focus:bg-white"
+                      className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 focus:outline-none focus:border-teal-700 focus:bg-white"
                     >
                       <option>Male</option>
                       <option>Female</option>
@@ -352,11 +368,11 @@ export default function HospitalDetailPage() {
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Select Time Slot</label>
+                  <label className="block font-medium text-slate-700 mb-1">Preferred Time Window</label>
                   <select
                     value={selectedTimeSlot}
                     onChange={(e) => setSelectedTimeSlot(e.target.value)}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:border-emerald-600 focus:bg-white"
+                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 focus:outline-none focus:border-teal-700 focus:bg-white"
                   >
                     <option>09:30 AM - 10:00 AM</option>
                     <option>10:00 AM - 10:30 AM</option>
@@ -369,15 +385,15 @@ export default function HospitalDetailPage() {
                 <button
                   type="submit"
                   disabled={bookingLoading}
-                  className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                  className="w-full py-2.5 bg-teal-700 hover:bg-teal-800 text-white font-medium text-xs rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                   {bookingLoading ? (
                     <>
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      <span>Generating OPD Token...</span>
+                      <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>Generating Token...</span>
                     </>
                   ) : (
-                    'Confirm & Generate OPD Token ➔'
+                    'Confirm Token Registration'
                   )}
                 </button>
               </form>

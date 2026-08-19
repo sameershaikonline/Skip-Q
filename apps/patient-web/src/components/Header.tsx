@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { Activity, User, LogOut, Calendar, Search } from 'lucide-react';
 
 export default function Header() {
   const router = useRouter();
@@ -32,55 +33,58 @@ export default function Header() {
   };
 
   return (
-    <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm">
+    <header className="sticky top-0 z-50 bg-white border-b border-slate-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-3 group">
-          <div className="w-10 h-10 rounded-xl bg-emerald-600 flex items-center justify-center text-white font-black text-xl shadow-md shadow-emerald-600/20 group-hover:scale-105 transition-transform">
-            🏥
+        {/* Brand Logo */}
+        <Link href="/" className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-teal-700 flex items-center justify-center text-white shadow-sm">
+            <Activity className="w-5 h-5" strokeWidth={2.2} />
           </div>
           <div>
-            <div className="flex items-center gap-1.5">
-              <span className="text-xl font-extrabold text-slate-900 tracking-tight">Skip-Q</span>
-              <span className="text-[10px] uppercase tracking-wider font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">
+            <div className="flex items-center gap-2">
+              <span className="text-lg font-bold text-slate-900 tracking-tight">Skip-Q</span>
+              <span className="text-[10px] font-semibold bg-slate-100 text-slate-700 px-2 py-0.5 rounded border border-slate-200">
                 Healthcare
               </span>
             </div>
-            <p className="text-[10px] font-medium text-slate-500 hidden sm:block">
-              Hospital Appointment & Live Token System
+            <p className="text-[11px] text-slate-500 font-normal leading-none">
+              Outpatient Department Token System
             </p>
           </div>
         </Link>
 
-        <nav className="flex items-center gap-6 text-sm font-semibold text-slate-600">
-          <Link href="/" className="hover:text-emerald-600 transition-colors hidden sm:block">
-            Find Hospitals
+        {/* Navigation Links */}
+        <nav className="flex items-center gap-6 text-sm font-medium text-slate-600">
+          <Link href="/" className="hover:text-teal-700 transition-colors flex items-center gap-1.5">
+            <Search className="w-4 h-4 text-slate-400" />
+            <span>Find Hospitals</span>
           </Link>
-          <Link href="/dashboard" className="hover:text-emerald-600 transition-colors">
-            My Tokens & Queue
+          <Link href="/dashboard" className="hover:text-teal-700 transition-colors flex items-center gap-1.5">
+            <Calendar className="w-4 h-4 text-slate-400" />
+            <span>My Tokens</span>
           </Link>
 
           {user ? (
-            <div className="flex items-center gap-3">
-              <span className="px-3 py-1.5 bg-slate-100 border border-slate-200 rounded-xl text-slate-800 font-medium text-xs flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                {user.name || user.email || 'Patient'}
-              </span>
+            <div className="flex items-center gap-2.5 pl-2 border-l border-slate-200">
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 text-xs">
+                <User className="w-3.5 h-3.5 text-slate-500" />
+                <span className="font-medium">{user.name || user.email || 'Patient'}</span>
+              </div>
               <button
                 onClick={handleSignOut}
-                className="px-3 py-1.5 bg-rose-50 border border-rose-200 text-rose-600 hover:bg-rose-100 font-bold text-xs rounded-xl transition-all"
+                className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                title="Sign Out"
               >
-                Sign Out
+                <LogOut className="w-4 h-4" />
               </button>
             </div>
           ) : (
-            <div className="flex items-center gap-2">
-              <Link
-                href="/auth/login"
-                className="px-4 py-2 bg-emerald-600 text-white font-bold text-xs rounded-xl hover:bg-emerald-700 transition-all shadow-sm shadow-emerald-600/20"
-              >
-                Sign In / Register
-              </Link>
-            </div>
+            <Link
+              href="/auth/login"
+              className="px-4 py-2 bg-teal-700 hover:bg-teal-800 text-white font-medium text-xs rounded-lg transition-colors shadow-sm"
+            >
+              Sign In
+            </Link>
           )}
         </nav>
       </div>

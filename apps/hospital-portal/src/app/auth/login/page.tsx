@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { Building2, Lock, Mail, ArrowRight } from 'lucide-react';
 
 export default function HospitalLoginPage() {
   const router = useRouter();
@@ -29,7 +30,7 @@ export default function HospitalLoginPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.message || 'Authentication failed. Please check credentials with Super Admin.');
+        throw new Error(data.message || 'Authentication failed. Please verify your credentials.');
       }
 
       if (data.token) {
@@ -40,7 +41,7 @@ export default function HospitalLoginPage() {
         router.push('/');
       }
     } catch (err: any) {
-      setError(err.message || 'Authentication failed. Please check credentials with Super Admin.');
+      setError(err.message || 'Authentication failed.');
     } finally {
       setLoading(false);
     }
@@ -48,71 +49,74 @@ export default function HospitalLoginPage() {
 
   return (
     <div className="max-w-md mx-auto my-16 px-4 space-y-6">
-      <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-md space-y-6">
-        <div className="text-center space-y-2">
-          <div className="w-12 h-12 mx-auto rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-700 text-2xl font-bold">
-            🏢
+      <div className="bg-white p-8 rounded-xl border border-slate-200 shadow-sm space-y-6">
+        <div className="space-y-1 text-center">
+          <div className="w-10 h-10 mx-auto rounded-lg bg-slate-900 flex items-center justify-center text-white">
+            <Building2 className="w-5 h-5 text-teal-400" />
           </div>
-          <h1 className="text-2xl font-black text-slate-900">Hospital Partner Sign In</h1>
+          <h1 className="text-xl font-bold text-slate-900 pt-2">Hospital Reception Portal</h1>
           <p className="text-xs text-slate-500">
-            Sign in using the authorized email and password assigned by Super Admin.
+            Sign in with the authorized account assigned to your healthcare facility
           </p>
         </div>
 
         {error && (
-          <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 font-medium text-center leading-relaxed">
+          <div className="p-3 bg-rose-50 border border-rose-200 rounded-lg text-xs text-rose-700">
             {error}
           </div>
         )}
 
-        <form onSubmit={handleLogin} className="space-y-4">
+        <form onSubmit={handleLogin} className="space-y-4 text-xs">
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">
-              Authorized Hospital Email *
+            <label className="block font-medium text-slate-700 mb-1">
+              Authorized Email
             </label>
-            <input
-              type="email"
-              required
-              placeholder="e.g. sameershaikonline@gmail.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-indigo-600 focus:bg-white transition-colors"
-            />
+            <div className="relative">
+              <input
+                type="email"
+                required
+                placeholder="reception@hospital.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 focus:outline-none focus:border-slate-900 focus:bg-white"
+              />
+            </div>
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">
-              Assigned Password *
+            <label className="block font-medium text-slate-700 mb-1">
+              Account Password
             </label>
-            <input
-              type="password"
-              required
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-indigo-600 focus:bg-white transition-colors"
-            />
+            <div className="relative">
+              <input
+                type="password"
+                required
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 focus:outline-none focus:border-slate-900 focus:bg-white"
+              />
+            </div>
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+            className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-medium text-xs rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {loading ? (
               <>
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                <span>Verifying Credentials...</span>
+                <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <span>Authenticating...</span>
               </>
             ) : (
-              'Sign In to Hospital Portal ➔'
+              <span>Sign In to Reception Desk</span>
             )}
           </button>
         </form>
 
-        <div className="text-center text-[11px] text-slate-400 pt-3 border-t border-slate-100 space-y-1">
-          <p className="font-semibold text-slate-600">Skip-Q Hospital Governance</p>
-          <p>Only hospital accounts created by Super Admin have access to this portal.</p>
+        <div className="text-center text-[11px] text-slate-400 pt-3 border-t border-slate-100">
+          Skip-Q Outpatient Management Infrastructure
         </div>
       </div>
     </div>
