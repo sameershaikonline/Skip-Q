@@ -102,7 +102,7 @@ export default function Header() {
                 </span>
               </Link>
 
-              {/* Zomato-Style Location Selector Pill */}
+              {/* Location Selector Pill */}
               {mounted && user && (
                 <button
                   onClick={() => setIsLocationModalOpen(true)}
