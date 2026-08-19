@@ -14,11 +14,13 @@
     "build": "turbo build",
     "lint": "turbo lint",
     "clean": "turbo clean",
+    "postinstall": "prisma generate --schema=packages/database/prisma/schema.prisma",
     "db:generate": "npm run --prefix packages/database db:generate",
     "db:push": "npm run --prefix packages/database db:push",
     "db:seed": "npm run --prefix packages/database db:seed"
   },
   "devDependencies": {
+    "prisma": "^5.14.0",
     "turbo": "^2.0.0",
     "typescript": "^5.4.0"
   },
