@@ -30,12 +30,20 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 Admin Dashboard
               </Link>
               <a
-                href="https://online-hospital-appointment-patient.vercel.app"
+                href="https://skipq-user.vercel.app"
                 target="_blank"
                 rel="noreferrer"
                 className="text-teal-400 hover:underline transition-colors"
               >
                 Patient Web App ↗
+              </a>
+              <a
+                href="https://skipq-hospital.vercel.app"
+                target="_blank"
+                rel="noreferrer"
+                className="text-indigo-400 hover:underline transition-colors"
+              >
+                Hospital Portal ↗
               </a>
             </nav>
           </div>
@@ -50,11 +58,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <p className="text-[11px] text-slate-500">Platform-wide Hospital Verification & Queue Oversight</p>
             </div>
             <div className="flex items-center space-x-4 text-[11px]">
-              <a href="https://online-hospital-appointment-patient.vercel.app" target="_blank" rel="noreferrer" className="text-teal-400 hover:underline">
+              <a
+                href="https://skipq-user.vercel.app"
+                target="_blank"
+                rel="noreferrer"
+                className="text-teal-400 hover:underline"
+              >
                 Patient Web
               </a>
               <span className="text-slate-600">•</span>
-              <a href="http://localhost:3001" target="_blank" rel="noreferrer" className="text-indigo-400 hover:underline">
+              <a
+                href="https://skipq-hospital.vercel.app"
+                target="_blank"
+                rel="noreferrer"
+                className="text-indigo-400 hover:underline"
+              >
                 Hospital Portal
               </a>
             </div>

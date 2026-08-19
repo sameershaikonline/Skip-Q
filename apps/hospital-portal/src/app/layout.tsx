@@ -54,8 +54,22 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <p className="text-[11px] text-slate-500">Live Hospital OPD Token Calling & Patient Queue Controller</p>
             </div>
             <div className="flex items-center space-x-4 text-[11px]">
-              <a href="https://online-hospital-appointment-patient.vercel.app" target="_blank" rel="noreferrer" className="text-teal-400 hover:underline">
-                View Patient Web App ➔
+              <a
+                href="https://skipq-user.vercel.app"
+                target="_blank"
+                rel="noreferrer"
+                className="text-teal-400 hover:underline"
+              >
+                Patient Web App ↗
+              </a>
+              <span className="text-slate-600">•</span>
+              <a
+                href="https://skipq-admin.vercel.app"
+                target="_blank"
+                rel="noreferrer"
+                className="text-purple-400 hover:underline"
+              >
+                Super Admin Console ↗
               </a>
             </div>
           </div>
