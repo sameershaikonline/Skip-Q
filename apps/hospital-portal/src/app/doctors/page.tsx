@@ -54,14 +54,7 @@ export default function ManageDoctorsPage() {
         if (Array.isArray(data)) setDoctors(data);
         else setDoctors([]);
       })
-      .catch(() => {
-        const raw = localStorage.getItem('hospital_doctors');
-        if (raw) {
-          try { setDoctors(JSON.parse(raw)); } catch {}
-        } else {
-          setDoctors([]);
-        }
-      })
+      .catch(() => setDoctors([]))
       .finally(() => setLoading(false));
   };
 

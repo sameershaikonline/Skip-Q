@@ -20,71 +20,68 @@ interface HospitalProfile {
   address: string;
   city: string;
   currentLiveToken: string;
+  email?: string;
 }
 
 export default function HospitalDashboardPage() {
   const router = useRouter();
+  const [authChecking, setAuthChecking] = useState(true);
   const [hospital, setHospital] = useState<HospitalProfile | null>(null);
   const [appointments, setAppointments] = useState<AppointmentItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [currentLiveToken, setCurrentLiveToken] = useState<number>(10);
+  const [currentLiveToken, setCurrentLiveToken] = useState<number>(1);
   const [manualTokenInput, setManualTokenInput] = useState<string>('');
   const [updating, setUpdating] = useState(false);
 
-  const [hospitalName, setHospitalName] = useState('Hospital Management');
+  const [hospitalName, setHospitalName] = useState('Hospital Partner');
   const [hospitalEmail, setHospitalEmail] = useState('');
 
   const fetchHospitalData = async () => {
     const token = localStorage.getItem('hospital_token');
-    if (!token) {
+    const hospitalId = localStorage.getItem('hospital_id');
+    const savedName = localStorage.getItem('hospital_name');
+    const savedEmail = localStorage.getItem('hospital_email');
+
+    if (!token || !hospitalId) {
+      localStorage.clear();
       router.push('/auth/login');
       return;
     }
 
-    const savedName = localStorage.getItem('hospital_name');
-    const savedEmail = localStorage.getItem('hospital_email');
     if (savedName) setHospitalName(savedName);
     if (savedEmail) setHospitalEmail(savedEmail);
 
-    const hospitalId = localStorage.getItem('hospital_id') || 'hosp_active';
-    const backend = process.env.NEXT_PUBLIC_BACKEND_URL;
-    const apptsUrl = backend
-      ? `${backend}/api/appointments/hospital-appointments`
-      : '/api/appointments/hospital-appointments';
-
     try {
-      const res = await fetch(apptsUrl, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (Array.isArray(data)) setAppointments(data);
+      const hospRes = await fetch(`/api/hospitals/${hospitalId}`);
+      if (hospRes.ok) {
+        const hData = await hospRes.json();
+        setHospital(hData);
+        if (hData.name) setHospitalName(hData.name);
+        if (hData.email) setHospitalEmail(hData.email);
+        if (hData.currentLiveToken) {
+          setCurrentLiveToken(Number(hData.currentLiveToken) || 1);
+        }
       }
-    } catch {
-      const raw = localStorage.getItem('my_appointments');
-      if (raw) {
-        try { setAppointments(JSON.parse(raw)); } catch {}
-      }
+    } catch (err) {
+      console.warn('Failed to fetch hospital details:', err);
     }
 
-    const hospUrl = backend ? `${backend}/api/hospitals/${hospitalId}` : `/api/hospitals/${hospitalId}`;
     try {
-      const res = await fetch(hospUrl);
-      if (res.ok) {
-        const hData = await res.json();
-        setHospital(hData);
-        if (hData.currentLiveToken) {
-          setCurrentLiveToken(Number(hData.currentLiveToken));
-        }
+      const apptsRes = await fetch('/api/appointments/hospital-appointments', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (apptsRes.ok) {
+        const data = await apptsRes.json();
+        if (Array.isArray(data)) setAppointments(data);
       }
     } catch {}
 
-    setLoading(false);
+    setAuthChecking(false);
   };
 
   useEffect(() => {
     const token = localStorage.getItem('hospital_token');
     if (!token) {
+      localStorage.clear();
       router.push('/auth/login');
       return;
     }
@@ -94,23 +91,21 @@ export default function HospitalDashboardPage() {
   }, []);
 
   const handleUpdateLiveToken = async (newToken: number) => {
+    if (newToken < 1) return;
     setUpdating(true);
     setCurrentLiveToken(newToken);
 
-    const hospitalId = hospital?.id || localStorage.getItem('hospital_id') || 'hosp_active';
-    const backend = process.env.NEXT_PUBLIC_BACKEND_URL;
-    const url = backend
-      ? `${backend}/api/hospitals/${hospitalId}/live-token`
-      : `/api/hospitals/${hospitalId}/live-token`;
+    const hospitalId = hospital?.id || localStorage.getItem('hospital_id');
+    if (!hospitalId) return;
 
     try {
-      await fetch(url, {
+      await fetch(`/api/hospitals/${hospitalId}/live-token`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ liveToken: String(newToken) }),
       });
     } catch (err) {
-      console.warn('Backend update failed:', err);
+      console.warn('Token update failed:', err);
     } finally {
       setUpdating(false);
       fetchHospitalData();
@@ -118,8 +113,7 @@ export default function HospitalDashboardPage() {
   };
 
   const handleCallNext = () => {
-    const next = currentLiveToken + 1;
-    handleUpdateLiveToken(next);
+    handleUpdateLiveToken(currentLiveToken + 1);
   };
 
   const handleCallPrevious = () => {
@@ -138,12 +132,18 @@ export default function HospitalDashboardPage() {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('hospital_token');
-    localStorage.removeItem('hospital_id');
-    localStorage.removeItem('hospital_name');
-    localStorage.removeItem('hospital_email');
+    localStorage.clear();
     router.push('/auth/login');
   };
+
+  if (authChecking) {
+    return (
+      <div className="max-w-md mx-auto my-32 text-center space-y-4">
+        <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto" />
+        <p className="text-xs text-slate-400 font-semibold">Verifying Hospital Authorization...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 pb-20">
@@ -249,7 +249,7 @@ export default function HospitalDashboardPage() {
               <button
                 onClick={() => handleUpdateLiveToken(currentLiveToken)}
                 disabled={updating}
-                className="py-3 bg-slate-950 border border-indigo-500/40 text-indigo-300 font-bold text-xs rounded-xl hover:bg-slate-800"
+                className="py-3 bg-slate-950 border border-slate-800 text-slate-300 font-bold text-xs rounded-xl hover:bg-slate-800"
               >
                 🔔 Re-Broadcast Current Token (#{currentLiveToken})
               </button>
@@ -258,85 +258,53 @@ export default function HospitalDashboardPage() {
         </div>
       </div>
 
-      {/* Queue Table */}
-      <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 space-y-4">
-        <div className="flex justify-between items-center">
+      {/* OPD Queue List */}
+      <div className="bg-slate-900 rounded-3xl border border-slate-800 p-6 space-y-4">
+        <div className="flex justify-between items-center border-b border-slate-800 pb-4">
           <div>
-            <h2 className="text-base font-black text-white">Today's Registered Patient Tokens</h2>
-            <p className="text-xs text-slate-400">All patients who booked an OPD token at this hospital.</p>
+            <h3 className="text-base font-bold text-white">Today's Patient OPD Queue</h3>
+            <p className="text-xs text-slate-400">Tokens issued and waiting for consultation</p>
           </div>
-          <span className="text-xs text-slate-400 font-mono">
-            Total Bookings: {appointments.length}
+          <span className="text-xs text-indigo-400 font-bold bg-indigo-500/10 px-3 py-1 rounded-full border border-indigo-500/20">
+            {appointments.length} Total Patients
           </span>
         </div>
 
-        <div className="overflow-x-auto">
-          {loading ? (
-            <div className="p-8 text-center text-xs text-slate-400 bg-slate-950 rounded-2xl border border-slate-800">
-              Loading hospital bookings...
-            </div>
-          ) : appointments.length === 0 ? (
-            <div className="p-12 text-center text-xs text-slate-400 bg-slate-950 rounded-2xl border border-slate-800 space-y-2">
-              <span className="text-3xl block">🎫</span>
-              <p className="font-bold text-white text-sm">No Patient Tokens Booked Yet</p>
-              <p className="text-slate-500">When patients book appointment tokens from the patient web app, they will appear here.</p>
-            </div>
-          ) : (
-            <table className="w-full text-left text-xs text-slate-300">
-              <thead className="bg-slate-950 text-slate-400 font-semibold border-b border-slate-800">
+        {appointments.length === 0 ? (
+          <div className="p-12 text-center text-xs text-slate-500 space-y-2">
+            <p>No patient queue tokens booked for today yet.</p>
+            <p className="text-[11px] text-slate-600">New patient bookings from the Patient Web App will appear here in real time.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-950 text-slate-400 font-bold uppercase text-[10px]">
                 <tr>
-                  <th className="p-3">TOKEN #</th>
-                  <th className="p-3">PATIENT NAME</th>
-                  <th className="p-3">APPOINTMENT DATE & SLOT</th>
-                  <th className="p-3">STATUS</th>
-                  <th className="p-3 text-right">ACTION</th>
+                  <th className="p-3">Token #</th>
+                  <th className="p-3">Patient Name</th>
+                  <th className="p-3">Contact</th>
+                  <th className="p-3">Time Slot</th>
+                  <th className="p-3">Status</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/60">
-                {appointments.map((item, idx) => {
-                  const tokenNum = item.token?.tokenNumber || item.tokenNumber || `${idx + 1}`;
-                  const isCurrent = Number(tokenNum) === currentLiveToken;
-                  const isPast = Number(tokenNum) < currentLiveToken;
-
-                  return (
-                    <tr key={item.id || idx} className={`hover:bg-slate-950/40 ${isCurrent ? 'bg-indigo-500/10' : ''}`}>
-                      <td className="p-3 font-mono font-black text-sm text-indigo-400">
-                        Token #{tokenNum}
-                      </td>
-                      <td className="p-3 font-semibold text-white">
-                        {item.patientName || item.patient?.name || 'Patient'}
-                      </td>
-                      <td className="p-3 text-slate-400">
-                        {item.appointmentDate} ({item.timeSlot})
-                      </td>
-                      <td className="p-3">
-                        <span
-                          className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
-                            isCurrent
-                              ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30 animate-pulse'
-                              : isPast
-                              ? 'bg-slate-800 text-slate-400 border-slate-700'
-                              : 'bg-amber-500/20 text-amber-400 border-amber-500/30'
-                          }`}
-                        >
-                          {isCurrent ? '● IN DOCTOR ROOM' : isPast ? 'COMPLETED' : 'IN WAITING AREA'}
-                        </span>
-                      </td>
-                      <td className="p-3 text-right">
-                        <button
-                          onClick={() => handleUpdateLiveToken(Number(tokenNum))}
-                          className="px-3 py-1 bg-indigo-500 text-slate-950 text-xs font-bold rounded-lg hover:bg-indigo-400"
-                        >
-                          Call Token #{tokenNum}
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
+              <tbody className="divide-y divide-slate-800">
+                {appointments.map((apt, idx) => (
+                  <tr key={apt.id || idx} className="hover:bg-slate-800/40 transition-colors">
+                    <td className="p-3 font-mono font-bold text-indigo-400">#{apt.token?.tokenNumber || idx + 1}</td>
+                    <td className="p-3 font-semibold text-white">{apt.patient?.name || apt.patientName || 'Patient'}</td>
+                    <td className="p-3 text-slate-400">{apt.patient?.phone || '—'}</td>
+                    <td className="p-3 text-slate-400">{apt.timeSlot}</td>
+                    <td className="p-3">
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-500/10 text-teal-400 border border-teal-500/30">
+                        {apt.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );

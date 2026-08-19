@@ -19,7 +19,6 @@ export default function HospitalLoginPage() {
     const inputPassword = password.trim();
 
     try {
-      // 1. Try hospital portal login API route
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -28,45 +27,17 @@ export default function HospitalLoginPage() {
 
       const data = await res.json();
 
-      if (res.ok && data.token) {
+      if (!res.ok) {
+        throw new Error(data.message || 'Authentication failed. Please verify credentials with Super Admin.');
+      }
+
+      if (data.token) {
         localStorage.setItem('hospital_token', data.token);
-        localStorage.setItem('hospital_id', data.user?.hospitalId || data.user?.id || 'hosp_active');
+        localStorage.setItem('hospital_id', data.user?.hospitalId || data.user?.id);
         localStorage.setItem('hospital_name', data.user?.name || 'Hospital Reception Desk');
         localStorage.setItem('hospital_email', inputEmail);
         router.push('/');
-        return;
       }
-
-      // 2. Direct Cloud KV Check Fallback if Vercel serverless cache hasn't synced
-      try {
-        const cloudRes = await fetch('https://kvdb.io/Wq7XvT8Z2pL4mR9kY1jC5B/skipq_hospitals', {
-          cache: 'no-store',
-        });
-        if (cloudRes.ok) {
-          const hospitalsList = await cloudRes.json();
-          if (Array.isArray(hospitalsList)) {
-            const match = hospitalsList.find((h: any) => h.email?.toLowerCase().trim() === inputEmail);
-            if (match) {
-              const expectedPass = (match.password || 'hospital123').trim();
-              if (expectedPass === inputPassword) {
-                const token = `hosp_jwt_${Date.now()}`;
-                localStorage.setItem('hospital_token', token);
-                localStorage.setItem('hospital_id', match.id);
-                localStorage.setItem('hospital_name', match.name);
-                localStorage.setItem('hospital_email', inputEmail);
-                router.push('/');
-                return;
-              } else {
-                setError('❌ Incorrect password. Please enter the password assigned by Super Admin.');
-                setLoading(false);
-                return;
-              }
-            }
-          }
-        }
-      } catch {}
-
-      throw new Error(data.message || 'Access Denied: Email not authorized by Super Admin.');
     } catch (err: any) {
       setError(err.message || 'Authentication failed. Please verify credentials with Super Admin.');
     } finally {
