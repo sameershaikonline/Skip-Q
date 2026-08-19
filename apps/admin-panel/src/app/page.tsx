@@ -13,7 +13,10 @@ interface Hospital {
   status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'SUSPENDED';
 }
 
+import { useRouter } from 'next/navigation';
+
 export default function AdminDashboardPage() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<'HOSPITALS' | 'MANUAL_ADD'>('HOSPITALS');
 
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
@@ -40,6 +43,12 @@ export default function AdminDashboardPage() {
     return backend ? `${backend}${path}` : path;
   };
 
+  const handleLogout = () => {
+    localStorage.removeItem('admin_token');
+    localStorage.removeItem('admin_email');
+    router.push('/auth/login');
+  };
+
   // Fetch Hospitals from backend or local API
   const fetchHospitals = () => {
     setLoading(true);
@@ -49,19 +58,16 @@ export default function AdminDashboardPage() {
         if (Array.isArray(data)) setHospitals(data);
         else setHospitals([]);
       })
-      .catch(() => {
-        // Fallback local storage
-        const raw = localStorage.getItem('admin_hospitals');
-        if (raw) {
-          try { setHospitals(JSON.parse(raw)); } catch {}
-        } else {
-          setHospitals([]);
-        }
-      })
+      .catch(() => setHospitals([]))
       .finally(() => setLoading(false));
   };
 
   useEffect(() => {
+    const token = localStorage.getItem('admin_token');
+    if (!token) {
+      router.push('/auth/login');
+      return;
+    }
     fetchHospitals();
   }, []);
 
@@ -174,23 +180,32 @@ export default function AdminDashboardPage() {
           </p>
         </div>
 
-        {/* Tab Selection */}
-        <div className="flex items-center p-1 bg-slate-900 rounded-xl border border-slate-800 text-xs font-semibold">
+        <div className="flex items-center gap-3">
+          {/* Tab Selection */}
+          <div className="flex items-center p-1 bg-slate-900 rounded-xl border border-slate-800 text-xs font-semibold">
+            <button
+              onClick={() => setActiveTab('HOSPITALS')}
+              className={`px-4 py-2 rounded-lg transition-colors ${
+                activeTab === 'HOSPITALS' ? 'bg-purple-500 text-slate-950 font-bold' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              🏥 Registered Hospitals ({hospitals.length})
+            </button>
+            <button
+              onClick={() => setActiveTab('MANUAL_ADD')}
+              className={`px-4 py-2 rounded-lg transition-colors ${
+                activeTab === 'MANUAL_ADD' ? 'bg-purple-500 text-slate-950 font-bold' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              ➕ Onboard Hospital Manually
+            </button>
+          </div>
+
           <button
-            onClick={() => setActiveTab('HOSPITALS')}
-            className={`px-4 py-2 rounded-lg transition-colors ${
-              activeTab === 'HOSPITALS' ? 'bg-purple-500 text-slate-950 font-bold' : 'text-slate-400 hover:text-white'
-            }`}
+            onClick={handleLogout}
+            className="px-3.5 py-2 bg-rose-500/10 border border-rose-500/30 text-rose-400 font-bold text-xs rounded-xl hover:bg-rose-500/20"
           >
-            🏥 Registered Hospitals ({hospitals.length})
-          </button>
-          <button
-            onClick={() => setActiveTab('MANUAL_ADD')}
-            className={`px-4 py-2 rounded-lg transition-colors ${
-              activeTab === 'MANUAL_ADD' ? 'bg-purple-500 text-slate-950 font-bold' : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            ➕ Onboard Hospital Manually
+            Sign Out
           </button>
         </div>
       </div>
