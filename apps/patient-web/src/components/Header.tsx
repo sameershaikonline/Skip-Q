@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Activity, User, LogOut, Calendar, Search } from 'lucide-react';
+import ThemeToggle from '@/components/ThemeToggle';
 
 export default function Header() {
   const router = useRouter();
@@ -53,9 +54,9 @@ export default function Header() {
           </div>
         </Link>
 
-        {/* Navigation Links */}
-        <nav className="flex items-center gap-6 text-sm font-medium text-slate-600">
-          <Link href="/" className="hover:text-teal-700 transition-colors flex items-center gap-1.5">
+        {/* Navigation Links & Theme Toggle */}
+        <nav className="flex items-center gap-4 text-sm font-medium text-slate-600">
+          <Link href="/" className="hover:text-teal-700 transition-colors flex items-center gap-1.5 hidden sm:flex">
             <Search className="w-4 h-4 text-slate-400" />
             <span>Find Hospitals</span>
           </Link>
@@ -64,8 +65,10 @@ export default function Header() {
             <span>My Tokens</span>
           </Link>
 
+          <ThemeToggle />
+
           {user ? (
-            <div className="flex items-center gap-2.5 pl-2 border-l border-slate-200">
+            <div className="flex items-center gap-2 pl-2 border-l border-slate-200">
               <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 text-xs">
                 <User className="w-3.5 h-3.5 text-slate-500" />
                 <span className="font-medium">{user.name || user.email || 'Patient'}</span>

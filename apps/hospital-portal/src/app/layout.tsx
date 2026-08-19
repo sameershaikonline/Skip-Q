@@ -2,6 +2,7 @@ import './globals.css';
 import React from 'react';
 import Link from 'next/link';
 import { Building2, Stethoscope, Activity } from 'lucide-react';
+import ThemeToggle from '@/components/ThemeToggle';
 
 export const metadata = {
   title: 'Skip-Q | Hospital Outpatient Queue Portal',
@@ -11,18 +12,18 @@ export const metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className="min-h-screen flex flex-col bg-slate-50 text-slate-900">
+      <body className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
         {/* Clean Enterprise Hospital Header */}
-        <header className="sticky top-0 z-50 bg-white border-b border-slate-200">
+        <header className="sticky top-0 z-50 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
             <Link href="/" className="flex items-center space-x-3">
-              <div className="w-9 h-9 rounded-lg bg-slate-900 flex items-center justify-center text-white shadow-sm">
+              <div className="w-9 h-9 rounded-lg bg-slate-900 dark:bg-slate-800 flex items-center justify-center text-white shadow-sm">
                 <Building2 className="w-5 h-5 text-teal-400" />
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="text-lg font-bold text-slate-900 tracking-tight">Skip-Q</span>
-                  <span className="text-[10px] font-semibold bg-slate-100 text-slate-700 px-2 py-0.5 rounded border border-slate-200">
+                  <span className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">Skip-Q</span>
+                  <span className="text-[10px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700">
                     Hospital Desk
                   </span>
                 </div>
@@ -32,15 +33,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               </div>
             </Link>
 
-            <nav className="flex items-center space-x-5 text-xs font-medium text-slate-600">
-              <Link href="/" className="hover:text-slate-900 transition-colors flex items-center gap-1">
+            <nav className="flex items-center space-x-5 text-xs font-medium text-slate-600 dark:text-slate-300">
+              <Link href="/" className="hover:text-slate-900 dark:hover:text-white transition-colors flex items-center gap-1">
                 <Activity className="w-3.5 h-3.5 text-slate-400" />
                 <span>Live Calling</span>
               </Link>
-              <Link href="/doctors" className="hover:text-slate-900 transition-colors flex items-center gap-1">
+              <Link href="/doctors" className="hover:text-slate-900 dark:hover:text-white transition-colors flex items-center gap-1">
                 <Stethoscope className="w-3.5 h-3.5 text-slate-400" />
                 <span>Doctor Schedule</span>
               </Link>
+              <ThemeToggle />
             </nav>
           </div>
         </header>

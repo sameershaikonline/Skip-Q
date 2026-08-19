@@ -10,21 +10,21 @@ export const metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className="min-h-screen flex flex-col bg-slate-50 text-slate-900">
+      <body className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors">
         <Header />
 
         <main className="flex-1">{children}</main>
 
-        <footer className="border-t border-slate-200 bg-white py-10 text-xs text-slate-500">
+        <footer className="border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 py-10 text-xs text-slate-500 dark:text-slate-400">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row justify-between items-center gap-6">
             <div className="space-y-1 text-center sm:text-left">
               <div className="flex items-center justify-center sm:justify-start gap-2">
-                <span className="font-bold text-slate-900 text-sm">Skip-Q Healthcare Network</span>
-                <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                <span className="font-bold text-slate-900 dark:text-white text-sm">Skip-Q Healthcare Network</span>
+                <span className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[10px] font-semibold px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700">
                   Mahabubabad
                 </span>
               </div>
-              <p className="text-slate-500 text-[11px]">
+              <p className="text-slate-500 dark:text-slate-400 text-[11px]">
                 Empowering patients with live OPD token tracking and zero physical queue waiting.
               </p>
             </div>
@@ -33,18 +33,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 href="https://skipq-hospital.vercel.app"
                 target="_blank"
                 rel="noreferrer"
-                className="text-slate-600 hover:text-emerald-600 font-semibold transition-colors flex items-center gap-1"
+                className="text-slate-600 dark:text-slate-300 hover:text-teal-700 dark:hover:text-teal-400 font-medium transition-colors flex items-center gap-1"
               >
-                🏢 Hospital Partner Portal ↗
+                Hospital Partner Portal ↗
               </a>
-              <span className="text-slate-300">•</span>
+              <span className="text-slate-300 dark:text-slate-700">•</span>
               <a
                 href="https://skipq-admin.vercel.app"
                 target="_blank"
                 rel="noreferrer"
-                className="text-slate-600 hover:text-indigo-600 font-semibold transition-colors flex items-center gap-1"
+                className="text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 font-medium transition-colors flex items-center gap-1"
               >
-                👑 Super Admin Console ↗
+                Super Admin Console ↗
               </a>
             </div>
           </div>
