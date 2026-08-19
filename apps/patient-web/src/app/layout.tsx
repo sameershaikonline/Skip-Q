@@ -1,6 +1,7 @@
 import './globals.css';
 import React from 'react';
 import Header from '@/components/Header';
+import SecurityGuard from '@/components/SecurityGuard';
 
 export const metadata = {
   title: 'Skip-Q | Book Hospital OPD Appointments & Track Live Tokens',
@@ -10,7 +11,8 @@ export const metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors">
+      <body className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors select-none">
+        <SecurityGuard />
         <Header />
 
         <main className="flex-1">{children}</main>

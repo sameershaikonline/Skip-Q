@@ -1,8 +1,9 @@
 import './globals.css';
 import React from 'react';
 import Link from 'next/link';
-import { Building2, Stethoscope, Activity } from 'lucide-react';
+import { Building2 } from 'lucide-react';
 import ThemeToggle from '@/components/ThemeToggle';
+import SecurityGuard from '@/components/SecurityGuard';
 
 export const metadata = {
   title: 'Skip-Q | Hospital Management Portal',
@@ -12,7 +13,8 @@ export const metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 selection:bg-blue-500/30">
+      <body className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 selection:bg-blue-500/30 select-none">
+        <SecurityGuard />
         <nav className="sticky top-0 z-50 glass border-b border-slate-200 dark:border-slate-800 transition-colors">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between h-20 items-center">
