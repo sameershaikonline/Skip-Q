@@ -42,13 +42,21 @@ export async function POST(req: Request) {
       );
     }
 
-    // 4. Valid OTP match - return success
+    // 4. Generate Session Token
+    const token = `jwt_${Date.now()}_${Math.random().toString(36).substring(2)}`;
+
+    // 5. Return success with token and user object
     return NextResponse.json({
       verified: true,
-      message: 'OTP verified successfully! Now set your account password.',
-      email: cleanEmail,
-      name: user.name,
-      phone: user.phone,
+      message: 'OTP verified successfully!',
+      token,
+      user: {
+        id: user.id,
+        name: user.name || 'Patient',
+        email: user.email,
+        phone: user.phone || '',
+        role: user.role || 'PATIENT',
+      },
     });
   } catch (err: any) {
     console.error('Verify OTP Error:', err);
