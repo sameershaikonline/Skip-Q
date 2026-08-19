@@ -13,24 +13,17 @@ export default function LoginPage() {
   const [success, setSuccess] = useState('');
   const [step, setStep] = useState<'FORM' | 'OTP'>('FORM');
   const [timer, setTimer] = useState(0);
-  const [previewOtp, setPreviewOtp] = useState<string | null>(null);
 
   useEffect(() => {
     if (timer <= 0) return;
-    const id = setInterval(() => setTimer(t => t - 1), 1000);
+    const id = setInterval(() => setTimer((t) => t - 1), 1000);
     return () => clearInterval(id);
   }, [timer]);
-
-  const getUrl = (path: string) => {
-    const base = process.env.NEXT_PUBLIC_BACKEND_URL;
-    return base ? `${base}${path}` : path;
-  };
 
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setSuccess('');
-    setPreviewOtp(null);
 
     if (!email.trim() || !email.includes('@')) {
       setError('Please enter a valid email address.');
@@ -39,7 +32,7 @@ export default function LoginPage() {
 
     setLoading(true);
     try {
-      const res = await fetch(getUrl('/api/auth/resend-otp'), {
+      const res = await fetch('/api/auth/resend-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: email.trim().toLowerCase() }),
@@ -50,7 +43,6 @@ export default function LoginPage() {
 
       setStep('OTP');
       setTimer(60);
-      if (data.otp) setPreviewOtp(data.otp);
       setSuccess(data.message || `OTP sent to ${email}. Check your inbox.`);
     } catch (err: any) {
       setError(err.message || 'Failed to send OTP. Please check your email.');
@@ -62,169 +54,137 @@ export default function LoginPage() {
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-
-    if (otp.trim().length !== 6) {
-      setError('Please enter all 6 digits of the OTP code from your email.');
-      return;
-    }
-
     setLoading(true);
+
     try {
-      const res = await fetch(getUrl('/api/auth/verify-otp'), {
+      const res = await fetch('/api/auth/verify-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: email.trim().toLowerCase(), otp: otp.trim() }),
       });
 
       const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.message || 'Incorrect OTP code.');
-      }
+      if (!res.ok) throw new Error(data.message || 'Invalid or expired OTP code.');
 
       if (data.token) {
         localStorage.setItem('token', data.token);
-        if (data.user) localStorage.setItem('user', JSON.stringify(data.user));
-        router.push('/dashboard');
+        localStorage.setItem('user', JSON.stringify(data.user || { email }));
+        router.push('/');
       }
     } catch (err: any) {
-      setError(err.message || 'Invalid OTP code. Please enter the exact code sent to your email.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleResend = async () => {
-    setError('');
-    setSuccess('');
-    setLoading(true);
-    try {
-      const res = await fetch(getUrl('/api/auth/resend-otp'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim().toLowerCase() }),
-      });
-      const data = await res.json();
-      setTimer(60);
-      if (data.otp) setPreviewOtp(data.otp);
-      setSuccess(data.message || `New OTP sent to ${email}.`);
-    } catch (err: any) {
-      setError(err.message || 'Failed to resend OTP.');
+      setError(err.message || 'Invalid OTP code.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="max-w-md mx-auto my-12 px-4">
-      <div className="bg-slate-900 p-8 rounded-3xl border border-slate-800 shadow-xl space-y-6">
-        {/* Header */}
-        <div className="text-center space-y-2">
-          <div className="w-12 h-12 mx-auto rounded-2xl bg-teal-500/20 border border-teal-500/30 flex items-center justify-center text-2xl">
-            ✉️
-          </div>
-          <h1 className="text-2xl font-black text-white">
-            {step === 'FORM' ? 'Sign In' : 'Verify Email OTP'}
-          </h1>
-          <p className="text-xs text-slate-400">
-            {step === 'FORM'
-              ? 'Enter your email to receive a sign-in OTP'
-              : `Check your inbox at ${email}`}
-          </p>
+    <div className="max-w-md mx-auto my-16 px-4 space-y-6">
+      <div className="glass p-10 rounded-[3rem] shadow-2xl space-y-6 text-center">
+        <div className="w-16 h-16 bg-gradient-to-tr from-blue-600 to-indigo-700 rounded-2xl flex items-center justify-center mx-auto text-white shadow-xl shadow-blue-500/30">
+          <svg viewBox="0 0 100 100" className="w-8 h-8 fill-none stroke-white" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M50 10 L15 28 V55 C15 75 50 90 50 90 C50 90 85 75 85 55 V28 L50 10Z" />
+            <path d="M35 52 L45 62 L65 42" strokeWidth="10" />
+          </svg>
         </div>
 
-        {/* Error */}
+        <div className="space-y-1">
+          <h1 className="text-3xl font-black text-slate-900 dark:text-white">Patient Sign In</h1>
+          <p className="text-xs text-slate-500 font-medium">Access your digital tokens and live queue tracker</p>
+        </div>
+
         {error && (
-          <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-xs text-rose-400 font-semibold text-center leading-relaxed">
+          <div className="p-4 bg-rose-500/10 border border-rose-500/30 rounded-2xl text-xs text-rose-500 font-bold text-center">
             {error}
           </div>
         )}
 
-        {/* Success */}
-        {success && !previewOtp && (
-          <div className="p-3 bg-teal-500/10 border border-teal-500/30 rounded-xl text-xs text-teal-400 text-center">
+        {success && (
+          <div className="p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl text-xs text-emerald-500 font-bold text-center">
             {success}
           </div>
         )}
 
-        {/* Step 1 — Email Form */}
-        {step === 'FORM' && (
-          <form onSubmit={handleSendOtp} className="space-y-4">
+        {step === 'FORM' ? (
+          <form onSubmit={handleSendOtp} className="space-y-4 text-xs font-bold text-left">
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Email Address</label>
+              <label className="block text-slate-700 dark:text-slate-300 mb-1">Your Email Address</label>
               <input
                 type="email"
                 required
-                autoFocus
-                placeholder="sksr.sameer@gmail.com"
+                placeholder="patient@example.com"
                 value={email}
-                onChange={e => setEmail(e.target.value)}
-                className="w-full p-3 bg-slate-950 border border-slate-800 rounded-xl text-sm text-white placeholder-slate-600 focus:outline-none focus:border-teal-500 transition-colors"
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full p-4 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-2xl text-sm font-medium outline-none focus:border-blue-500 transition-all text-slate-900 dark:text-white"
               />
             </div>
+
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 bg-teal-400 text-slate-950 font-black text-sm rounded-xl hover:bg-teal-300 active:scale-95 transition-all disabled:opacity-50"
+              className="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-4 rounded-[2rem] text-sm shadow-xl shadow-blue-500/30 transition-all hover:scale-105 disabled:opacity-50 flex items-center justify-center gap-2"
             >
-              {loading ? 'Sending OTP...' : '✉️ Send Sign In OTP →'}
+              {loading ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span>Sending Login OTP...</span>
+                </>
+              ) : (
+                'Send Verification OTP ➔'
+              )}
             </button>
-          </form>
-        )}
 
-        {/* Step 2 — OTP Form */}
-        {step === 'OTP' && (
-          <form onSubmit={handleVerifyOtp} className="space-y-5">
+            <div className="text-center pt-2">
+              <Link href="/auth/register" className="text-blue-500 hover:underline font-bold">
+                Don't have an account? Register here
+              </Link>
+            </div>
+          </form>
+        ) : (
+          <form onSubmit={handleVerifyOtp} className="space-y-4 text-xs font-bold text-left">
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-2 text-center">
-                6-Digit Email OTP Code
-              </label>
+              <label className="block text-slate-700 dark:text-slate-300 mb-1">6-Digit Verification OTP</label>
               <input
                 type="text"
-                inputMode="numeric"
-                maxLength={6}
                 required
-                autoFocus
-                placeholder="• • • • • •"
+                maxLength={6}
+                placeholder="123456"
                 value={otp}
-                onChange={e => setOtp(e.target.value.replace(/\D/g, ''))}
-                className="w-full p-4 bg-slate-950 border border-teal-500/40 rounded-xl text-center font-mono text-3xl text-teal-400 tracking-[0.5em] focus:outline-none focus:border-teal-400 placeholder-slate-700 transition-colors"
+                onChange={(e) => setOtp(e.target.value)}
+                className="w-full p-4 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-2xl text-2xl font-mono text-center font-black tracking-widest outline-none focus:border-blue-500 text-slate-900 dark:text-white"
               />
             </div>
 
             <button
               type="submit"
-              disabled={loading || otp.length < 6}
-              className="w-full py-3 bg-teal-400 text-slate-950 font-black text-sm rounded-xl hover:bg-teal-300 active:scale-95 transition-all disabled:opacity-50"
+              disabled={loading}
+              className="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-4 rounded-[2rem] text-sm shadow-xl shadow-blue-500/30 transition-all hover:scale-105 disabled:opacity-50 flex items-center justify-center gap-2"
             >
-              {loading ? 'Verifying...' : '✅ Verify & Sign In'}
-            </button>
-
-            <div className="text-center">
-              {timer > 0 ? (
-                <p className="text-xs text-slate-500">Resend in <span className="text-teal-400 font-bold">{timer}s</span></p>
+              {loading ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span>Verifying Code...</span>
+                </>
               ) : (
-                <button type="button" onClick={handleResend} disabled={loading} className="text-xs text-teal-400 hover:underline font-semibold">
-                  ↺ Resend OTP
-                </button>
+                'Verify & Enter Dashboard ➔'
               )}
-            </div>
-
-            <button
-              type="button"
-              onClick={() => { setStep('FORM'); setOtp(''); setError(''); setSuccess(''); setPreviewOtp(null); }}
-              className="w-full text-center text-xs text-slate-500 hover:text-slate-300"
-            >
-              ← Change Email
             </button>
+
+            <div className="text-center pt-2">
+              <button
+                type="button"
+                onClick={() => setStep('FORM')}
+                className="text-slate-500 hover:text-slate-700 font-bold"
+              >
+                ← Back to email input
+              </button>
+            </div>
           </form>
         )}
 
-        <div className="text-center text-xs text-slate-500 pt-2 border-t border-slate-800">
-          Don't have an account?{' '}
-          <Link href="/auth/register" className="text-teal-400 font-bold hover:underline">Register</Link>
-          {' · '}
-          <Link href="/auth/forgot-password" className="text-slate-400 hover:underline">Forgot password?</Link>
-        </div>
+        <p className="text-[11px] font-medium text-slate-500 pt-2">
+          Skip-Q Healthcare Network
+        </p>
       </div>
     </div>
   );
