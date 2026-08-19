@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { MapPin, LogOut, ChevronDown } from 'lucide-react';
+import { MapPin, LogOut, ChevronDown, User as UserIcon } from 'lucide-react';
 import ThemeToggle from '@/components/ThemeToggle';
 import LocationModal, { UserLocation } from '@/components/LocationModal';
 
@@ -13,37 +13,58 @@ export default function Header() {
   const [user, setUser] = useState<{ name?: string; email?: string } | null>(null);
   const [location, setLocation] = useState<UserLocation | null>(null);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
-  useEffect(() => {
-    const updateHeaderState = () => {
-      try {
-        const rawUser = localStorage.getItem('user');
-        if (rawUser) setUser(JSON.parse(rawUser));
-        else setUser(null);
+  const syncAuthAndLocation = useCallback(() => {
+    try {
+      const token = localStorage.getItem('token');
+      const rawUser = localStorage.getItem('user');
 
-        const rawLoc = localStorage.getItem('skipq_user_location');
-        if (rawLoc) {
-          setLocation(JSON.parse(rawLoc));
-        } else {
-          // If user is authenticated but no location set, open modal
-          if (rawUser && !localStorage.getItem('skipq_location_prompted')) {
-            setIsLocationModalOpen(true);
-            localStorage.setItem('skipq_location_prompted', 'true');
+      if (token) {
+        if (rawUser) {
+          try {
+            setUser(JSON.parse(rawUser));
+          } catch {
+            setUser({ name: 'Patient' });
           }
+        } else {
+          setUser({ name: 'Patient' });
         }
-      } catch {
+      } else {
         setUser(null);
       }
-    };
 
-    updateHeaderState();
-    window.addEventListener('storage', updateHeaderState);
-    window.addEventListener('skipq_location_change', updateHeaderState);
-    return () => {
-      window.removeEventListener('storage', updateHeaderState);
-      window.removeEventListener('skipq_location_change', updateHeaderState);
-    };
+      const rawLoc = localStorage.getItem('skipq_user_location');
+      if (rawLoc) {
+        setLocation(JSON.parse(rawLoc));
+      } else if (token && !localStorage.getItem('skipq_location_prompted')) {
+        setIsLocationModalOpen(true);
+        localStorage.setItem('skipq_location_prompted', 'true');
+      }
+    } catch {
+      setUser(null);
+    }
   }, []);
+
+  useEffect(() => {
+    setMounted(true);
+    syncAuthAndLocation();
+
+    window.addEventListener('storage', syncAuthAndLocation);
+    window.addEventListener('skipq_auth_change', syncAuthAndLocation);
+    window.addEventListener('skipq_location_change', syncAuthAndLocation);
+
+    return () => {
+      window.removeEventListener('storage', syncAuthAndLocation);
+      window.removeEventListener('skipq_auth_change', syncAuthAndLocation);
+      window.removeEventListener('skipq_location_change', syncAuthAndLocation);
+    };
+  }, [syncAuthAndLocation]);
+
+  // Re-sync on pathname changes (when navigating from /auth/login or /auth/register to /)
+  useEffect(() => {
+    syncAuthAndLocation();
+  }, [pathname, syncAuthAndLocation]);
 
   const handleSelectLocation = (loc: UserLocation) => {
     setLocation(loc);
@@ -58,6 +79,7 @@ export default function Header() {
     localStorage.removeItem('skipq_location_prompted');
     setUser(null);
     setLocation(null);
+    window.dispatchEvent(new Event('skipq_auth_change'));
     router.push('/auth/login');
   };
 
@@ -81,7 +103,7 @@ export default function Header() {
               </Link>
 
               {/* Zomato-Style Location Selector Pill */}
-              {user && (
+              {mounted && user && (
                 <button
                   onClick={() => setIsLocationModalOpen(true)}
                   className="hidden sm:flex items-center gap-2 px-3.5 py-1.5 rounded-2xl glass border border-slate-200 dark:border-slate-800 hover:border-blue-500 transition-all text-xs font-bold text-slate-700 dark:text-slate-200"
@@ -110,26 +132,33 @@ export default function Header() {
 
             {/* Right Controls: User Profile & Theme Toggle */}
             <div className="flex items-center space-x-3">
-              {user ? (
-                <div className="flex items-center gap-2">
-                  <span className="px-3.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs font-bold text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700">
-                    {user.name || user.email || 'Patient'}
-                  </span>
-                  <button
-                    onClick={handleSignOut}
-                    className="p-2 rounded-xl text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 transition-colors"
-                    title="Sign Out"
-                  >
-                    <LogOut className="w-4 h-4" />
-                  </button>
-                </div>
-              ) : (
-                <Link
-                  href="/auth/login"
-                  className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-blue-500/30 transition-all hover:scale-105"
-                >
-                  Sign In
-                </Link>
+              {mounted && (
+                <>
+                  {user ? (
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs font-bold text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700">
+                        <UserIcon className="w-3.5 h-3.5 text-blue-500" />
+                        <span className="max-w-[120px] truncate">
+                          {user.name || user.email || 'Patient'}
+                        </span>
+                      </div>
+                      <button
+                        onClick={handleSignOut}
+                        className="p-2 rounded-xl text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 transition-colors"
+                        title="Sign Out"
+                      >
+                        <LogOut className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <Link
+                      href="/auth/login"
+                      className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-blue-500/30 transition-all hover:scale-105"
+                    >
+                      Sign In
+                    </Link>
+                  )}
+                </>
               )}
 
               <ThemeToggle />

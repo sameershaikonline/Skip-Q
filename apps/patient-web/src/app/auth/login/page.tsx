@@ -59,6 +59,7 @@ export default function LoginPage() {
       if (data.token) {
         localStorage.setItem('token', data.token);
         localStorage.setItem('user', JSON.stringify(data.user || { email: cleanEmail }));
+        window.dispatchEvent(new Event('skipq_auth_change'));
         router.push('/');
       }
     } catch (err: any) {
@@ -116,11 +117,13 @@ export default function LoginPage() {
 
     setLoading(true);
 
+    const cleanEmail = email.trim().toLowerCase();
+
     try {
       const res = await fetch('/api/auth/verify-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim().toLowerCase(), otp: cleanOtp }),
+        body: JSON.stringify({ email: cleanEmail, otp: cleanOtp }),
       });
 
       const data = await res.json();
@@ -128,7 +131,8 @@ export default function LoginPage() {
 
       if (data.token) {
         localStorage.setItem('token', data.token);
-        localStorage.setItem('user', JSON.stringify(data.user || { email: email.trim().toLowerCase() }));
+        localStorage.setItem('user', JSON.stringify(data.user || { email: cleanEmail }));
+        window.dispatchEvent(new Event('skipq_auth_change'));
         router.push('/');
       }
     } catch (err: any) {

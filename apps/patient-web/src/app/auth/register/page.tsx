@@ -205,6 +205,7 @@ export default function PatientRegisterPage() {
         localStorage.setItem('token', data.token);
         localStorage.setItem('user', JSON.stringify(data.user || { name, email, phone }));
         localStorage.removeItem('skipq_location_prompted');
+        window.dispatchEvent(new Event('skipq_auth_change'));
         router.push('/');
       }
     } catch (err: any) {
