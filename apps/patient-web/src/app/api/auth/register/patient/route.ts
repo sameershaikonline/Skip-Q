@@ -4,6 +4,9 @@ import nodemailer from 'nodemailer';
 
 export const dynamic = 'force-dynamic';
 
+const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+const PHONE_REGEX = /^[0-9]{10}$/;
+
 export async function POST(req: Request) {
   try {
     const { name, email, phone } = await req.json();
@@ -11,16 +14,18 @@ export async function POST(req: Request) {
     if (!name || !name.trim()) {
       return NextResponse.json({ message: 'Full name is required.' }, { status: 400 });
     }
-    if (!email || !email.includes('@')) {
-      return NextResponse.json({ message: 'Valid email address is required.' }, { status: 400 });
-    }
-    if (!phone || phone.trim().length < 10) {
-      return NextResponse.json({ message: 'Valid 10-digit phone number is required.' }, { status: 400 });
+
+    const cleanEmail = (email || '').trim().toLowerCase();
+    if (!EMAIL_REGEX.test(cleanEmail)) {
+      return NextResponse.json({ message: 'Please enter a valid email address with domain suffix (e.g. name@gmail.com).' }, { status: 400 });
     }
 
-    const cleanEmail = email.trim().toLowerCase();
+    const cleanPhone = (phone || '').replace(/\D/g, '');
+    if (!PHONE_REGEX.test(cleanPhone)) {
+      return NextResponse.json({ message: 'Mobile phone number must be exactly 10 digits.' }, { status: 400 });
+    }
+
     const cleanName = name.trim();
-    const cleanPhone = phone.trim();
 
     // Check if user already exists
     const existingUser = await prisma.user.findUnique({
@@ -86,7 +91,7 @@ export async function POST(req: Request) {
     return NextResponse.json({
       requiresOtp: true,
       email: cleanEmail,
-      otp, // Preview fallback if SMTP credentials not configured
+      otp,
       message: `OTP generated for ${cleanEmail}.`,
     });
   } catch (err: any) {

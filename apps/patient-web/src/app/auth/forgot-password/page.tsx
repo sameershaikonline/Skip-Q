@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { KeyRound, Mail, Lock, CheckCircle2 } from 'lucide-react';
 
+const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+
 export default function ForgotPasswordPage() {
   const router = useRouter();
   const [step, setStep] = useState<'REQUEST' | 'RESET' | 'SUCCESS'>('REQUEST');
@@ -25,8 +27,10 @@ export default function ForgotPasswordPage() {
     setError('');
     setSuccess('');
 
-    if (!email.trim() || !email.includes('@')) {
-      setError('Please enter a valid email address.');
+    const cleanEmail = email.trim().toLowerCase();
+
+    if (!EMAIL_REGEX.test(cleanEmail)) {
+      setError('Please enter a valid email address with domain suffix (e.g. name@gmail.com).');
       return;
     }
 
@@ -38,7 +42,7 @@ export default function ForgotPasswordPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'SEND_OTP',
-          email: email.trim().toLowerCase(),
+          email: cleanEmail,
         }),
       });
 
@@ -46,7 +50,7 @@ export default function ForgotPasswordPage() {
       if (!res.ok) throw new Error(data.message || 'Failed to dispatch password reset OTP.');
 
       if (data.otp) setPreviewOtp(data.otp);
-      setSuccess(data.message || `Password reset OTP sent to ${email}`);
+      setSuccess(data.message || `Password reset OTP sent to ${cleanEmail}`);
       setStep('RESET');
     } catch (err: any) {
       setError(err.message || 'Password reset request failed.');
@@ -61,7 +65,8 @@ export default function ForgotPasswordPage() {
     setError('');
     setSuccess('');
 
-    if (!otp.trim() || otp.trim().length !== 6) {
+    const cleanOtp = otp.trim();
+    if (!cleanOtp || cleanOtp.length !== 6) {
       setError('Please enter the 6-digit OTP code.');
       return;
     }
@@ -83,7 +88,7 @@ export default function ForgotPasswordPage() {
         body: JSON.stringify({
           action: 'RESET_PASSWORD',
           email: email.trim().toLowerCase(),
-          otp: otp.trim(),
+          otp: cleanOtp,
           newPassword,
         }),
       });
@@ -148,7 +153,7 @@ export default function ForgotPasswordPage() {
                 <input
                   type="email"
                   required
-                  placeholder="Enter your registered email"
+                  placeholder="Enter your email (e.g. name@gmail.com)"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full bg-transparent text-sm font-medium outline-none text-slate-900 dark:text-white placeholder-slate-400"
@@ -190,7 +195,7 @@ export default function ForgotPasswordPage() {
                 maxLength={6}
                 placeholder="Enter 6-digit OTP"
                 value={otp}
-                onChange={(e) => setOtp(e.target.value)}
+                onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
                 className="w-full p-4 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-2xl text-2xl font-mono text-center font-black tracking-widest outline-none focus:border-blue-500 text-slate-900 dark:text-white"
               />
             </div>

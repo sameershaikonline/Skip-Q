@@ -117,11 +117,30 @@ export default function AdminDashboardPage() {
     e.preventDefault();
     setFormError('');
     setFormSuccess('');
+
+    const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    const PHONE_REGEX = /^[0-9]{10}$/;
+
+    const cleanEmail = newHospital.email.trim().toLowerCase();
+    const cleanPhone = newHospital.contactNumber.replace(/\D/g, '');
+
+    if (!EMAIL_REGEX.test(cleanEmail)) {
+      setFormError('Please enter a valid authorized hospital email with domain suffix (e.g. reception@hospital.com).');
+      return;
+    }
+
+    if (!PHONE_REGEX.test(cleanPhone)) {
+      setFormError('Reception phone number must be exactly 10 digits.');
+      return;
+    }
+
     setSubmitting(true);
 
     try {
       const payload = {
         ...newHospital,
+        email: cleanEmail,
+        contactNumber: cleanPhone,
         doctors: doctorsList.filter((d) => d.name.trim().length > 0),
       };
 
@@ -406,13 +425,17 @@ export default function AdminDashboardPage() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-700 dark:text-slate-300 mb-1">Reception Phone *</label>
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="text-slate-700 dark:text-slate-300">Reception Phone *</label>
+                    <span className="text-[10px] text-slate-400 font-normal">10 digits ({newHospital.contactNumber.length}/10)</span>
+                  </div>
                   <input
                     type="tel"
                     required
-                    placeholder="9876543210"
+                    maxLength={10}
+                    placeholder="Enter 10-digit phone number"
                     value={newHospital.contactNumber}
-                    onChange={(e) => setNewHospital({ ...newHospital, contactNumber: e.target.value })}
+                    onChange={(e) => setNewHospital({ ...newHospital, contactNumber: e.target.value.replace(/\D/g, '').slice(0, 10) })}
                     className="w-full p-3.5 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-2xl outline-none font-medium focus:border-blue-500 text-slate-900 dark:text-white"
                   />
                 </div>

@@ -17,7 +17,18 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: 'Hospital Name, Address, Contact, and Email are required.' }, { status: 400 });
     }
 
+    const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    const PHONE_REGEX = /^[0-9]{10}$/;
+
     const cleanEmail = data.email.trim().toLowerCase();
+    if (!EMAIL_REGEX.test(cleanEmail)) {
+      return NextResponse.json({ message: 'Please provide a valid hospital email with domain suffix (e.g. reception@hospital.com).' }, { status: 400 });
+    }
+
+    const cleanPhone = data.contactNumber.replace(/\D/g, '');
+    if (!PHONE_REGEX.test(cleanPhone)) {
+      return NextResponse.json({ message: 'Reception contact phone must be exactly 10 digits.' }, { status: 400 });
+    }
     const cleanPassword = data.password || 'hospital123';
     const passwordHash = hashPassword(cleanPassword);
     const licenseNumber = data.licenseNumber || `TS-${Date.now().toString().slice(-6)}`;

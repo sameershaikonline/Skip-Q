@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ShieldCheck, Mail, Lock, ArrowRight } from 'lucide-react';
 
+const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+
 export default function LoginPage() {
   const router = useRouter();
   const [loginMode, setLoginMode] = useState<'PASSWORD' | 'OTP'>('PASSWORD');
@@ -28,8 +30,10 @@ export default function LoginPage() {
     setError('');
     setSuccess('');
 
-    if (!email.trim() || !email.includes('@')) {
-      setError('Please enter a valid email address.');
+    const cleanEmail = email.trim().toLowerCase();
+
+    if (!EMAIL_REGEX.test(cleanEmail)) {
+      setError('Please enter a valid email address with domain suffix (e.g. name@gmail.com).');
       return;
     }
     if (!password) {
@@ -44,7 +48,7 @@ export default function LoginPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          email: email.trim().toLowerCase(),
+          email: cleanEmail,
           password,
         }),
       });
@@ -54,7 +58,7 @@ export default function LoginPage() {
 
       if (data.token) {
         localStorage.setItem('token', data.token);
-        localStorage.setItem('user', JSON.stringify(data.user || { email }));
+        localStorage.setItem('user', JSON.stringify(data.user || { email: cleanEmail }));
         router.push('/');
       }
     } catch (err: any) {
@@ -70,8 +74,10 @@ export default function LoginPage() {
     setError('');
     setSuccess('');
 
-    if (!email.trim() || !email.includes('@')) {
-      setError('Please enter a valid email address.');
+    const cleanEmail = email.trim().toLowerCase();
+
+    if (!EMAIL_REGEX.test(cleanEmail)) {
+      setError('Please enter a valid email address with domain suffix (e.g. name@gmail.com).');
       return;
     }
 
@@ -81,14 +87,14 @@ export default function LoginPage() {
       const res = await fetch('/api/auth/resend-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim().toLowerCase() }),
+        body: JSON.stringify({ email: cleanEmail }),
       });
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Account not found. Please register.');
 
       if (data.otp) setPreviewOtp(data.otp);
-      setSuccess(data.message || `Login OTP sent to ${email}`);
+      setSuccess(data.message || `Login OTP sent to ${cleanEmail}`);
       setOtpStep(true);
     } catch (err: any) {
       setError(err.message || 'Failed to send login OTP.');
@@ -102,7 +108,8 @@ export default function LoginPage() {
     e.preventDefault();
     setError('');
 
-    if (!otp.trim() || otp.trim().length !== 6) {
+    const cleanOtp = otp.trim();
+    if (!cleanOtp || cleanOtp.length !== 6) {
       setError('Please enter the 6-digit OTP.');
       return;
     }
@@ -113,7 +120,7 @@ export default function LoginPage() {
       const res = await fetch('/api/auth/verify-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim().toLowerCase(), otp: otp.trim() }),
+        body: JSON.stringify({ email: email.trim().toLowerCase(), otp: cleanOtp }),
       });
 
       const data = await res.json();
@@ -121,7 +128,7 @@ export default function LoginPage() {
 
       if (data.token) {
         localStorage.setItem('token', data.token);
-        localStorage.setItem('user', JSON.stringify(data.user || { email }));
+        localStorage.setItem('user', JSON.stringify(data.user || { email: email.trim().toLowerCase() }));
         router.push('/');
       }
     } catch (err: any) {
@@ -209,7 +216,7 @@ export default function LoginPage() {
                 <input
                   type="email"
                   required
-                  placeholder="Enter your registered email"
+                  placeholder="Enter your email (e.g. name@gmail.com)"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full bg-transparent text-sm font-medium outline-none text-slate-900 dark:text-white placeholder-slate-400"
@@ -269,7 +276,7 @@ export default function LoginPage() {
                     <input
                       type="email"
                       required
-                      placeholder="Enter your email"
+                      placeholder="Enter your registered email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       className="w-full bg-transparent text-sm font-medium outline-none text-slate-900 dark:text-white placeholder-slate-400"
@@ -302,7 +309,7 @@ export default function LoginPage() {
                     maxLength={6}
                     placeholder="Enter 6-digit OTP"
                     value={otp}
-                    onChange={(e) => setOtp(e.target.value)}
+                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
                     className="w-full p-4 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-2xl text-2xl font-mono text-center font-black tracking-widest outline-none focus:border-blue-500 text-slate-900 dark:text-white"
                   />
                 </div>

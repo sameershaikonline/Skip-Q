@@ -4,6 +4,8 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Shield, Mail, Lock } from 'lucide-react';
 
+const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+
 export default function AdminLoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState('');
@@ -13,14 +15,28 @@ export default function AdminLoginPage() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
     setError('');
+
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanPassword = password.trim();
+
+    if (!EMAIL_REGEX.test(cleanEmail)) {
+      setError('Please enter a valid email address with domain suffix (e.g. admin@skipq.in).');
+      return;
+    }
+
+    if (!cleanPassword) {
+      setError('Please enter the Super Admin master password.');
+      return;
+    }
+
+    setLoading(true);
 
     try {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim().toLowerCase(), password }),
+        body: JSON.stringify({ email: cleanEmail, password: cleanPassword }),
       });
 
       const data = await res.json();
@@ -31,7 +47,7 @@ export default function AdminLoginPage() {
 
       if (data.token) {
         localStorage.setItem('admin_token', data.token);
-        localStorage.setItem('admin_email', data.user?.email || email);
+        localStorage.setItem('admin_email', data.user?.email || cleanEmail);
         router.push('/');
       }
     } catch (err: any) {
@@ -67,7 +83,7 @@ export default function AdminLoginPage() {
               <input
                 type="email"
                 required
-                placeholder="Enter master admin email"
+                placeholder="Enter master admin email (e.g. admin@skipq.in)"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full bg-transparent text-sm font-medium outline-none text-slate-900 dark:text-white placeholder-slate-400"

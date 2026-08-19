@@ -4,6 +4,8 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Building2, Mail, Lock } from 'lucide-react';
 
+const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+
 export default function HospitalLoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState('');
@@ -13,11 +15,22 @@ export default function HospitalLoginPage() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
     setError('');
 
     const inputEmail = email.trim().toLowerCase();
     const inputPassword = password.trim();
+
+    if (!EMAIL_REGEX.test(inputEmail)) {
+      setError('Please enter a valid email address with domain suffix (e.g. name@hospital.com).');
+      return;
+    }
+
+    if (!inputPassword) {
+      setError('Please enter your hospital account password.');
+      return;
+    }
+
+    setLoading(true);
 
     try {
       const res = await fetch('/api/auth/login', {
@@ -72,7 +85,7 @@ export default function HospitalLoginPage() {
               <input
                 type="email"
                 required
-                placeholder="Enter hospital reception email"
+                placeholder="Enter email (e.g. reception@hospital.com)"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full bg-transparent text-sm font-medium outline-none text-slate-900 dark:text-white placeholder-slate-400"

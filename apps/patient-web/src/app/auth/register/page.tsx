@@ -3,9 +3,12 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ShieldCheck, ArrowRight, Lock, Mail, User, Phone, CheckCircle2 } from 'lucide-react';
+import { ShieldCheck, Lock, Mail, User, Phone } from 'lucide-react';
 
 type Step = 'DETAILS' | 'OTP' | 'PASSWORD';
+
+const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+const PHONE_REGEX = /^[0-9]{10}$/;
 
 export default function PatientRegisterPage() {
   const router = useRouter();
@@ -28,22 +31,28 @@ export default function PatientRegisterPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  // 1. Submit Registration Details
+  // 1. Submit Registration Details with Strict Validations
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setSuccess('');
 
-    if (!name.trim()) {
+    const cleanName = name.trim();
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanPhone = phone.replace(/\D/g, '');
+
+    if (!cleanName) {
       setError('Please enter your full name.');
       return;
     }
-    if (!email.trim() || !email.includes('@')) {
-      setError('Please enter a valid email address.');
+
+    if (!EMAIL_REGEX.test(cleanEmail)) {
+      setError('Please enter a valid email address with domain suffix (e.g. name@gmail.com).');
       return;
     }
-    if (!phone.trim() || phone.trim().length < 10) {
-      setError('Please enter a valid 10-digit mobile number.');
+
+    if (!PHONE_REGEX.test(cleanPhone)) {
+      setError('Please enter exactly a 10-digit mobile phone number.');
       return;
     }
 
@@ -54,9 +63,9 @@ export default function PatientRegisterPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: name.trim(),
-          email: email.trim().toLowerCase(),
-          phone: phone.trim(),
+          name: cleanName,
+          email: cleanEmail,
+          phone: cleanPhone,
         }),
       });
 
@@ -64,7 +73,7 @@ export default function PatientRegisterPage() {
       if (!res.ok) throw new Error(data.message || 'Registration failed');
 
       if (data.otp) setPreviewOtp(data.otp);
-      setSuccess(data.message || `Verification OTP sent to ${email}`);
+      setSuccess(data.message || `Verification OTP sent to ${cleanEmail}`);
       setStep('OTP');
     } catch (err: any) {
       setError(err.message || 'Registration request failed.');
@@ -79,7 +88,8 @@ export default function PatientRegisterPage() {
     setError('');
     setSuccess('');
 
-    if (!otp.trim() || otp.trim().length !== 6) {
+    const cleanOtp = otp.trim();
+    if (!cleanOtp || cleanOtp.length !== 6) {
       setError('Please enter the 6-digit verification code.');
       return;
     }
@@ -90,7 +100,7 @@ export default function PatientRegisterPage() {
       const res = await fetch('/api/auth/verify-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim().toLowerCase(), otp: otp.trim() }),
+        body: JSON.stringify({ email: email.trim().toLowerCase(), otp: cleanOtp }),
       });
 
       const data = await res.json();
@@ -129,7 +139,7 @@ export default function PatientRegisterPage() {
         body: JSON.stringify({
           email: email.trim().toLowerCase(),
           name: name.trim(),
-          phone: phone.trim(),
+          phone: phone.replace(/\D/g, ''),
           password,
         }),
       });
@@ -140,7 +150,6 @@ export default function PatientRegisterPage() {
       if (data.token) {
         localStorage.setItem('token', data.token);
         localStorage.setItem('user', JSON.stringify(data.user || { name, email, phone }));
-        // Trigger location prompt
         localStorage.removeItem('skipq_location_prompted');
         router.push('/');
       }
@@ -167,8 +176,8 @@ export default function PatientRegisterPage() {
             {step === 'PASSWORD' && 'Set Account Password'}
           </h1>
           <p className="text-xs text-slate-500 font-medium">
-            {step === 'DETAILS' && 'Step 1 of 3: Enter your official contact information'}
-            {step === 'OTP' && 'Step 2 of 3: Check your inbox for the 6-digit code'}
+            {step === 'DETAILS' && 'Step 1 of 3: Enter your contact details'}
+            {step === 'OTP' && 'Step 2 of 3: Enter the 6-digit code sent to your email'}
             {step === 'PASSWORD' && 'Step 3 of 3: Create a secure password for future logins'}
           </p>
         </div>
@@ -217,7 +226,7 @@ export default function PatientRegisterPage() {
                 <input
                   type="email"
                   required
-                  placeholder="Enter your email address"
+                  placeholder="Enter your email (e.g. name@gmail.com)"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full bg-transparent text-sm font-medium outline-none text-slate-900 dark:text-white placeholder-slate-400"
@@ -226,15 +235,19 @@ export default function PatientRegisterPage() {
             </div>
 
             <div>
-              <label className="block text-slate-700 dark:text-slate-300 mb-1">Mobile Phone Number *</label>
+              <div className="flex justify-between items-center mb-1">
+                <label className="text-slate-700 dark:text-slate-300">Mobile Phone Number *</label>
+                <span className="text-[10px] text-slate-400 font-normal">Exactly 10 digits ({phone.length}/10)</span>
+              </div>
               <div className="flex items-center p-3.5 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-2xl focus-within:border-blue-500 transition-all">
                 <Phone className="w-4 h-4 text-slate-400 mr-2 shrink-0" />
                 <input
                   type="tel"
                   required
+                  maxLength={10}
                   placeholder="Enter 10-digit mobile number"
                   value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
+                  onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
                   className="w-full bg-transparent text-sm font-medium outline-none text-slate-900 dark:text-white placeholder-slate-400"
                 />
               </div>
@@ -274,7 +287,7 @@ export default function PatientRegisterPage() {
                 maxLength={6}
                 placeholder="Enter 6-digit OTP"
                 value={otp}
-                onChange={(e) => setOtp(e.target.value)}
+                onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
                 className="w-full p-4 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-2xl text-2xl font-mono text-center font-black tracking-widest outline-none focus:border-blue-500 text-slate-900 dark:text-white"
               />
             </div>
