@@ -42,56 +42,63 @@ export default function AdminLoginPage() {
 
   return (
     <div className="max-w-md mx-auto my-16 px-4 space-y-6">
-      <div className="bg-slate-900 p-8 rounded-3xl border border-purple-500/30 shadow-2xl space-y-6">
+      <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-md space-y-6">
         <div className="text-center space-y-2">
-          <div className="w-12 h-12 mx-auto rounded-2xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center text-2xl font-bold">
+          <div className="w-12 h-12 mx-auto rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-700 text-2xl font-bold">
             👑
           </div>
-          <h1 className="text-2xl font-black text-white">Super Admin Control Hub</h1>
-          <p className="text-xs text-slate-400">Platform Governance & Hospital Verification</p>
+          <h1 className="text-2xl font-black text-slate-900">Super Admin Control Hub</h1>
+          <p className="text-xs text-slate-500">Platform Governance & Hospital Verification</p>
         </div>
 
         {error && (
-          <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-xs text-rose-400 font-semibold text-center">
+          <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 font-medium text-center">
             {error}
           </div>
         )}
 
         <form onSubmit={handleLogin} className="space-y-4 text-xs">
           <div>
-            <label className="block font-semibold text-slate-300 mb-1">Admin Email *</label>
+            <label className="block font-bold text-slate-700 mb-1">Admin Master Email *</label>
             <input
               type="email"
               required
-              placeholder="admin@skipq.in"
+              placeholder="sameershaikonline@gmail.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full p-3 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-purple-500"
+              className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:border-indigo-600 focus:bg-white transition-colors"
             />
           </div>
 
           <div>
-            <label className="block font-semibold text-slate-300 mb-1">Password *</label>
+            <label className="block font-bold text-slate-700 mb-1">Password *</label>
             <input
               type="password"
               required
               placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full p-3 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-purple-500"
+              className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:border-indigo-600 focus:bg-white transition-colors"
             />
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3.5 bg-purple-500 text-slate-950 font-black text-xs rounded-xl shadow hover:bg-purple-400 transition-colors disabled:opacity-50"
+            className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
           >
-            {loading ? 'Authenticating...' : 'Sign In to Super Admin Console ➔'}
+            {loading ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <span>Authenticating Master Session...</span>
+              </>
+            ) : (
+              'Sign In to Super Admin Console ➔'
+            )}
           </button>
         </form>
 
-        <div className="text-center text-[11px] text-slate-500 pt-2 border-t border-slate-800">
+        <div className="text-center text-[11px] text-slate-400 pt-2 border-t border-slate-100">
           Skip-Q Healthcare Infrastructure Governance
         </div>
       </div>

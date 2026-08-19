@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 export default function HospitalLoginPage() {
   const router = useRouter();
@@ -28,7 +29,7 @@ export default function HospitalLoginPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.message || 'Authentication failed. Please verify credentials with Super Admin.');
+        throw new Error(data.message || 'Authentication failed. Please check credentials with Super Admin.');
       }
 
       if (data.token) {
@@ -39,34 +40,34 @@ export default function HospitalLoginPage() {
         router.push('/');
       }
     } catch (err: any) {
-      setError(err.message || 'Authentication failed. Please verify credentials with Super Admin.');
+      setError(err.message || 'Authentication failed. Please check credentials with Super Admin.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="max-w-md mx-auto my-12 px-4 space-y-6">
-      <div className="bg-slate-900 p-8 rounded-3xl border border-slate-800 shadow-xl space-y-6">
+    <div className="max-w-md mx-auto my-16 px-4 space-y-6">
+      <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-md space-y-6">
         <div className="text-center space-y-2">
-          <div className="w-12 h-12 mx-auto rounded-2xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 text-2xl font-bold">
+          <div className="w-12 h-12 mx-auto rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-700 text-2xl font-bold">
             🏢
           </div>
-          <h1 className="text-2xl font-black text-white">Hospital Partner Sign In</h1>
-          <p className="text-xs text-slate-400">
+          <h1 className="text-2xl font-black text-slate-900">Hospital Partner Sign In</h1>
+          <p className="text-xs text-slate-500">
             Sign in using the authorized email and password assigned by Super Admin.
           </p>
         </div>
 
         {error && (
-          <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-xs text-rose-400 font-semibold text-center leading-relaxed">
+          <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 font-medium text-center leading-relaxed">
             {error}
           </div>
         )}
 
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">
+            <label className="block text-xs font-bold text-slate-700 mb-1">
               Authorized Hospital Email *
             </label>
             <input
@@ -75,12 +76,12 @@ export default function HospitalLoginPage() {
               placeholder="e.g. sameershaikonline@gmail.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full p-3 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500"
+              className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-indigo-600 focus:bg-white transition-colors"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">
+            <label className="block text-xs font-bold text-slate-700 mb-1">
               Assigned Password *
             </label>
             <input
@@ -89,21 +90,28 @@ export default function HospitalLoginPage() {
               placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full p-3 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500"
+              className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-indigo-600 focus:bg-white transition-colors"
             />
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3.5 bg-indigo-500 text-slate-950 font-black text-xs rounded-xl shadow hover:bg-indigo-400 transition-colors disabled:opacity-50"
+            className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
           >
-            {loading ? 'Verifying Authorization...' : 'Sign In to Hospital Portal ➔'}
+            {loading ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <span>Verifying Credentials...</span>
+              </>
+            ) : (
+              'Sign In to Hospital Portal ➔'
+            )}
           </button>
         </form>
 
-        <div className="text-center text-[11px] text-slate-400 pt-3 border-t border-slate-800 space-y-1">
-          <p className="font-semibold text-slate-300">Protected Hospital Governance</p>
+        <div className="text-center text-[11px] text-slate-400 pt-3 border-t border-slate-100 space-y-1">
+          <p className="font-semibold text-slate-600">Skip-Q Hospital Governance</p>
           <p>Only hospital accounts created by Super Admin have access to this portal.</p>
         </div>
       </div>

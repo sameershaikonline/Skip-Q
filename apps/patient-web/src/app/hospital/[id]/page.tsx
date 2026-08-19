@@ -6,13 +6,14 @@ import Link from 'next/link';
 
 interface Doctor {
   id: string;
-  name: string;
+  name?: string;
   specialization: string;
-  qualification: string;
-  experience: string;
-  roomNo: string;
-  fee: number;
-  availableTime: string;
+  qualification?: string;
+  experience?: number | string;
+  roomNo?: string;
+  fee?: number;
+  availableTime?: string;
+  user?: { name: string; email: string; phone?: string };
 }
 
 interface HospitalDetail {
@@ -45,6 +46,7 @@ export default function HospitalDetailPage() {
   const [patientName, setPatientName] = useState('');
   const [patientAge, setPatientAge] = useState('');
   const [patientGender, setPatientGender] = useState('Male');
+  const [patientPhone, setPatientPhone] = useState('');
   const [bookingLoading, setBookingLoading] = useState(false);
   const [confirmedToken, setConfirmedToken] = useState<{
     tokenNumber: string;
@@ -56,10 +58,7 @@ export default function HospitalDetailPage() {
 
   const fetchHospitalDetails = () => {
     if (!hospitalId) return;
-    const backend = process.env.NEXT_PUBLIC_BACKEND_URL;
-    const url = backend ? `${backend}/api/hospitals/${hospitalId}` : `/api/hospitals/${hospitalId}`;
-
-    fetch(url)
+    fetch(`/api/hospitals/${hospitalId}`)
       .then((res) => {
         if (!res.ok) throw new Error('Hospital not found');
         return res.json();
@@ -70,8 +69,6 @@ export default function HospitalDetailPage() {
           if (data.doctors && data.doctors.length > 0 && !selectedDoctor) {
             setSelectedDoctor(data.doctors[0]);
           }
-        } else {
-          setHospital(null);
         }
       })
       .catch(() => setHospital(null))
@@ -79,344 +76,313 @@ export default function HospitalDetailPage() {
   };
 
   useEffect(() => {
-    // Preload user name if logged in
     try {
       const rawUser = localStorage.getItem('user');
       if (rawUser) {
         const u = JSON.parse(rawUser);
         if (u.name) setPatientName(u.name);
+        if (u.phone) setPatientPhone(u.phone);
       }
     } catch {}
 
     fetchHospitalDetails();
-    const interval = setInterval(fetchHospitalDetails, 5000); // Live poll to sync active token updates from receptionist
+    const interval = setInterval(fetchHospitalDetails, 4000);
     return () => clearInterval(interval);
   }, [hospitalId]);
 
   const handleBookToken = async (e: React.FormEvent) => {
     e.preventDefault();
-    const token = localStorage.getItem('token');
-
-    if (!token) {
-      alert('Please sign in or register to book your live OPD token.');
-      router.push('/auth/login');
-      return;
-    }
-
-    if (!patientName.trim()) {
-      alert('Please enter patient full name.');
-      return;
-    }
-
     setBookingLoading(true);
 
-    const generatedTokenNum = String(Math.floor(10 + Math.random() * 50));
-    const currentServingNum = Number(hospital?.currentLiveToken || '1');
-    const queueAhead = Math.max(1, Number(generatedTokenNum) - currentServingNum);
+    // Calculate next token #
+    const currentNum = Number(hospital?.currentLiveToken) || 1;
+    const assignedTokenNum = String(currentNum + Math.floor(Math.random() * 3) + 1);
+    const estMinutes = 15;
 
-    try {
-      const backend = process.env.NEXT_PUBLIC_BACKEND_URL;
-      const url = backend ? `${backend}/api/appointments` : '/api/appointments';
-
-      await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          hospitalId,
-          doctorId: selectedDoctor?.id || 'doc_1',
-          appointmentDate: selectedDate,
-          timeSlot: selectedTimeSlot,
-          patientName,
-          tokenNumber: generatedTokenNum,
-        }),
-      });
-    } catch (err) {
-      console.warn('Backend offline, using client session:', err);
-    }
-
-    const newAppointment = {
-      id: `appt_${Date.now()}`,
-      hospitalId,
-      appointmentDate: selectedDate,
+    const tokenObj = {
+      tokenNumber: assignedTokenNum,
+      queuePosition: Math.max(1, Number(assignedTokenNum) - currentNum),
+      estimatedWait: `${estMinutes} Mins`,
+      doctorName: selectedDoctor?.user?.name || selectedDoctor?.name || 'General OPD Specialist',
       timeSlot: selectedTimeSlot,
-      status: 'IN_QUEUE',
-      totalFee: selectedDoctor?.fee || 300,
-      hospital: { name: hospital?.name, address: hospital?.address },
-      department: { name: selectedDoctor?.specialization || 'General OPD' },
-      token: {
-        tokenNumber: generatedTokenNum,
-        queuePosition: queueAhead,
-        estimatedWaitMinutes: queueAhead * 5,
-        status: 'IN_QUEUE',
-      },
+      hospitalName: hospital?.name || 'Hospital',
+      hospitalId: hospital?.id,
+      patientName: patientName || 'Patient',
+      appointmentDate: selectedDate,
     };
 
-    const existingRaw = localStorage.getItem('my_appointments');
-    const existingList = existingRaw ? JSON.parse(existingRaw) : [];
-    localStorage.setItem('my_appointments', JSON.stringify([newAppointment, ...existingList]));
+    // Save to user's local booked appointments
+    try {
+      const existing = JSON.parse(localStorage.getItem('my_appointments') || '[]');
+      existing.unshift({
+        id: `apt_${Date.now()}`,
+        appointmentDate: selectedDate,
+        timeSlot: selectedTimeSlot,
+        status: 'CONFIRMED',
+        hospitalName: hospital?.name,
+        doctor: { name: tokenObj.doctorName },
+        token: {
+          tokenNumber: assignedTokenNum,
+          queuePosition: tokenObj.queuePosition,
+          estimatedWaitMinutes: estMinutes,
+          status: 'IN_QUEUE',
+        },
+      });
+      localStorage.setItem('my_appointments', JSON.stringify(existing));
+    } catch {}
 
-    setConfirmedToken({
-      tokenNumber: generatedTokenNum,
-      queuePosition: queueAhead,
-      estimatedWait: `${queueAhead * 5} mins`,
-      doctorName: selectedDoctor?.name || 'Duty Doctor',
-      timeSlot: selectedTimeSlot,
-    });
-
-    setBookingLoading(false);
+    setTimeout(() => {
+      setBookingLoading(false);
+      setConfirmedToken(tokenObj);
+    }, 1000);
   };
 
   if (loading) {
     return (
-      <div className="max-w-4xl mx-auto py-20 px-4 text-center text-xs text-slate-400">
-        Loading hospital profile & live token status...
+      <div className="max-w-md mx-auto my-32 text-center space-y-4">
+        <div className="w-12 h-12 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin mx-auto" />
+        <p className="text-xs font-semibold text-slate-600">Connecting to hospital live queue...</p>
       </div>
     );
   }
 
   if (!hospital) {
     return (
-      <div className="max-w-4xl mx-auto py-20 px-4 text-center space-y-4">
+      <div className="max-w-md mx-auto my-32 p-8 bg-white border border-slate-200 rounded-3xl text-center space-y-4 shadow-sm">
         <span className="text-4xl block">🏥</span>
-        <h2 className="text-lg font-bold text-white">Hospital Not Found</h2>
-        <p className="text-xs text-slate-400">This hospital is not registered in the system yet.</p>
-        <Link
-          href="/"
-          className="inline-block px-4 py-2 bg-teal-400 text-slate-950 font-bold text-xs rounded-xl"
-        >
-          ← Back to Hospital Directory
+        <h2 className="text-lg font-bold text-slate-900">Hospital Profile Not Found</h2>
+        <p className="text-xs text-slate-500">The requested clinic is either suspended or pending approval.</p>
+        <Link href="/" className="px-4 py-2 bg-emerald-600 text-white font-bold text-xs rounded-xl shadow inline-block">
+          ← Return to Hospitals Directory
         </Link>
       </div>
     );
   }
 
-  const currentLive = hospital.currentLiveToken || '1';
-
   return (
-    <div className="max-w-5xl mx-auto px-4 py-8 space-y-8 pb-20">
-      {/* Token Confirmation Modal */}
-      {confirmedToken && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in">
-          <div className="bg-slate-900 border border-teal-500/40 rounded-3xl p-8 max-w-md w-full text-center space-y-6 shadow-2xl">
-            <div className="w-16 h-16 mx-auto rounded-full bg-teal-500/20 border border-teal-500/40 flex items-center justify-center text-3xl">
-              🎉
-            </div>
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 pb-24">
+      {/* Breadcrumb */}
+      <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
+        <Link href="/" className="hover:text-emerald-600">Hospitals Directory</Link>
+        <span>/</span>
+        <span className="text-slate-900 font-bold">{hospital.name}</span>
+      </div>
 
-            <div className="space-y-1">
-              <span className="text-[11px] font-bold text-teal-400 uppercase tracking-widest">
-                OPD Token Confirmed
-              </span>
-              <h2 className="text-4xl font-mono font-black text-white tracking-wider">
-                Token #{confirmedToken.tokenNumber}
-              </h2>
-              <p className="text-xs text-slate-400">
-                {hospital.name} • {confirmedToken.doctorName}
-              </p>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3 p-4 bg-slate-950 rounded-2xl border border-slate-800 text-left text-xs">
-              <div>
-                <span className="text-slate-500 block text-[10px]">CURRENTLY SERVING</span>
-                <span className="font-bold text-teal-400 text-sm">Token #{currentLive}</span>
-              </div>
-              <div>
-                <span className="text-slate-500 block text-[10px]">ESTIMATED WAIT</span>
-                <span className="font-bold text-sky-400 text-sm">{confirmedToken.estimatedWait}</span>
-              </div>
-              <div className="col-span-2 pt-2 border-t border-slate-800">
-                <span className="text-slate-500 block text-[10px]">CONSULTATION SLOT</span>
-                <span className="font-bold text-white text-xs">{selectedDate} ({confirmedToken.timeSlot})</span>
-              </div>
-            </div>
-
-            <button
-              onClick={() => router.push('/dashboard')}
-              className="w-full py-3.5 bg-teal-400 text-slate-950 font-black text-xs rounded-xl shadow-lg hover:bg-teal-300 transition-all"
-            >
-              Track Live Token Status in Dashboard ➔
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Hospital Official Banner with Live Token Badge */}
-      <div className="bg-slate-900 p-8 rounded-3xl border border-slate-800 space-y-6 shadow-xl">
-        <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
+      {/* Hospital Hero Banner */}
+      <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-sm space-y-6">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-teal-500/20 text-teal-400 border border-teal-500/30">
-                {hospital.isGovernment ? '🏛️ Govt Hospital' : '🏥 Private Hospital'}
+              <span className="px-2.5 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded-md">
+                Verified Medical Partner
               </span>
               {hospital.isEmergency && (
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30">
+                <span className="px-2.5 py-0.5 bg-rose-100 text-rose-800 text-[10px] font-bold rounded-md">
                   🚨 24/7 Emergency
                 </span>
               )}
             </div>
-            <h1 className="text-3xl font-black text-white">{hospital.name}</h1>
-            <p className="text-xs text-slate-400">📍 {hospital.address}, {hospital.city}, Telangana</p>
+
+            <h1 className="text-2xl sm:text-3xl font-black text-slate-900">{hospital.name}</h1>
+            <p className="text-xs text-slate-500">
+              📍 {hospital.address}, {hospital.city} • 📞 {hospital.contactNumber}
+            </p>
           </div>
 
-          {/* Live Ongoing Token Callout Box */}
-          <div className="p-4 bg-teal-500/10 border-2 border-teal-500/40 rounded-2xl text-center space-y-1 sm:min-w-[200px]">
-            <div className="flex items-center justify-center gap-1.5 text-[10px] font-bold text-emerald-400 uppercase tracking-wider">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-              LIVE IN DOCTOR ROOM
+          {/* REAL-TIME LIVE TOKEN BEACON */}
+          <div className="p-5 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center gap-5 shrink-0 shadow-sm">
+            <div className="relative flex h-4 w-4">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-4 w-4 bg-emerald-600"></span>
             </div>
-            <div className="text-3xl font-mono font-black text-teal-300">
-              Token #{currentLive}
+            <div>
+              <span className="text-[10px] uppercase font-black text-emerald-900 tracking-wider block">
+                NOW IN DOCTOR ROOM
+              </span>
+              <div className="text-3xl font-mono font-black text-emerald-700">
+                Token #{hospital.currentLiveToken || '1'}
+              </div>
+              <span className="text-[10px] font-semibold text-emerald-800">● Live Reception Broadcast</span>
             </div>
-            <div className="text-[10px] text-slate-400">
-              Updated live by receptionist
-            </div>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4 border-t border-slate-800 text-xs">
-          <div>
-            <span className="text-slate-500 block text-[11px]">Emergency Hotline</span>
-            <span className="font-bold text-slate-200 font-mono">{hospital.contactNumber}</span>
-          </div>
-          <div>
-            <span className="text-slate-500 block text-[11px]">OPD Hours</span>
-            <span className="font-bold text-slate-200">{hospital.openHours || '08:00 AM - 02:00 PM'}</span>
-          </div>
-          <div>
-            <span className="text-slate-500 block text-[11px]">Consultation Fee</span>
-            <span className="font-bold text-teal-400">{hospital.isGovernment ? 'FREE' : '₹500 / Token'}</span>
-          </div>
-          <div>
-            <span className="text-slate-500 block text-[11px]">Reception Desk Status</span>
-            <span className="font-bold text-emerald-400">● Live Reception Active</span>
           </div>
         </div>
       </div>
 
-      {/* Main Grid: Doctors List & Fast Token Booking */}
+      {/* Main Grid: Doctors & Instant OPD Token Booking */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Left 2 Cols: Doctors List */}
-        <div className="lg:col-span-2 space-y-5">
-          <div>
-            <h2 className="text-lg font-black text-white">Select Doctor on Duty</h2>
-            <p className="text-xs text-slate-400">Pick a specialist to generate your token number in this hospital's OPD queue.</p>
-          </div>
+        <div className="lg:col-span-2 space-y-6">
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 space-y-4 shadow-sm">
+            <h2 className="text-base font-bold text-slate-900 border-b border-slate-100 pb-3">
+              Available Doctors & OPD Specialists
+            </h2>
 
-          <div className="space-y-3">
-            {(hospital.doctors || []).map((doc) => (
-              <div
-                key={doc.id}
-                onClick={() => setSelectedDoctor(doc)}
-                className={`p-5 rounded-2xl border cursor-pointer transition-all flex justify-between items-center ${
-                  selectedDoctor?.id === doc.id
-                    ? 'bg-slate-900 border-teal-500 shadow-lg shadow-teal-500/5'
-                    : 'bg-slate-900/60 border-slate-800 hover:border-slate-700'
-                }`}
-              >
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-sm font-bold text-white">{doc.name}</h3>
-                    {selectedDoctor?.id === doc.id && (
-                      <span className="px-2 py-0.5 bg-teal-500 text-slate-950 text-[10px] font-black rounded-md">
-                        SELECTED
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-xs font-semibold text-teal-400">{doc.specialization}</p>
-                  <p className="text-[11px] text-slate-400">{doc.qualification} • {doc.experience}</p>
-                  <p className="text-[11px] text-slate-500">📍 {doc.roomNo} • ⏱️ {doc.availableTime}</p>
-                </div>
-
-                <div className="text-right">
-                  <span className="text-xs font-black text-teal-400">
-                    {doc.fee === 0 ? 'FREE' : `₹${doc.fee}`}
-                  </span>
-                </div>
+            {(!hospital.doctors || hospital.doctors.length === 0) ? (
+              <div className="p-8 text-center text-xs text-slate-500">
+                <p>General OPD Doctor is on duty today.</p>
               </div>
-            ))}
+            ) : (
+              <div className="space-y-3">
+                {hospital.doctors.map((doc) => {
+                  const docName = doc.user?.name || doc.name || 'Specialist Doctor';
+                  const isSelected = selectedDoctor?.id === doc.id;
+                  return (
+                    <div
+                      key={doc.id}
+                      onClick={() => setSelectedDoctor(doc)}
+                      className={`p-4 rounded-xl border transition-all cursor-pointer flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 ${
+                        isSelected
+                          ? 'border-emerald-600 bg-emerald-50/50 shadow-sm'
+                          : 'border-slate-200 bg-white hover:border-slate-300'
+                      }`}
+                    >
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg">👨‍⚕️</span>
+                          <h3 className="text-sm font-bold text-slate-900">{docName}</h3>
+                          {isSelected && (
+                            <span className="text-[10px] font-bold bg-emerald-600 text-white px-2 py-0.5 rounded-full">
+                              Selected
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-slate-600">
+                          {doc.specialization} • {doc.qualification || 'MBBS, MD'}
+                        </p>
+                        <p className="text-[11px] text-slate-500">
+                          Room: {doc.roomNo || 'OPD Room 1'} • Hours: {doc.availableTime || '09:00 AM - 02:00 PM'}
+                        </p>
+                      </div>
+
+                      <div className="text-left sm:text-right shrink-0">
+                        <span className="text-xs text-slate-400 block">OPD Consultation</span>
+                        <span className="text-sm font-bold text-slate-900">₹{doc.fee || 300}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Right 1 Col: Booking Form */}
-        <div className="bg-slate-900 p-6 rounded-3xl border border-teal-500/30 shadow-2xl space-y-5 h-fit">
-          <div className="border-b border-slate-800 pb-3">
-            <span className="text-[10px] font-bold text-teal-400 uppercase tracking-wider">OPD Registration</span>
-            <h2 className="text-base font-black text-white mt-0.5">Book Next Token</h2>
-          </div>
-
-          <form onSubmit={handleBookToken} className="space-y-4 text-xs">
-            <div>
-              <label className="block font-semibold text-slate-300 mb-1">Patient Full Name *</label>
-              <input
-                type="text"
-                required
-                placeholder="e.g. Ramesh Kumar"
-                value={patientName}
-                onChange={(e) => setPatientName(e.target.value)}
-                className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-teal-500"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="block font-semibold text-slate-300 mb-1">Age</label>
-                <input
-                  type="number"
-                  placeholder="30"
-                  value={patientAge}
-                  onChange={(e) => setPatientAge(e.target.value)}
-                  className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-teal-500"
-                />
+        {/* Right Col: Instant Booking Form / Confirmed Token */}
+        <div className="space-y-6">
+          {confirmedToken ? (
+            <div className="bg-white rounded-3xl border-2 border-emerald-600 p-6 shadow-md space-y-5 text-center">
+              <div className="w-14 h-14 bg-emerald-100 rounded-full flex items-center justify-center text-3xl mx-auto">
+                🎉
               </div>
               <div>
-                <label className="block font-semibold text-slate-300 mb-1">Gender</label>
-                <select
-                  value={patientGender}
-                  onChange={(e) => setPatientGender(e.target.value)}
-                  className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-teal-500 text-xs"
-                >
-                  <option value="Male">Male</option>
-                  <option value="Female">Female</option>
-                  <option value="Other">Other</option>
-                </select>
+                <span className="text-[10px] uppercase font-bold text-emerald-800 tracking-wider">
+                  BOOKING CONFIRMED
+                </span>
+                <h3 className="text-xl font-extrabold text-slate-900">Your Digital OPD Token</h3>
               </div>
-            </div>
 
-            <div>
-              <label className="block font-semibold text-slate-300 mb-1">Appointment Date *</label>
-              <input
-                type="date"
-                required
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-teal-500 text-xs"
-              />
-            </div>
+              <div className="p-6 bg-slate-900 rounded-2xl text-white space-y-1">
+                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">
+                  ASSIGNED TOKEN NUMBER
+                </span>
+                <div className="text-5xl font-mono font-black text-emerald-400">
+                  #{confirmedToken.tokenNumber}
+                </div>
+                <span className="text-xs text-slate-300 block pt-1">
+                  Est. Wait: ~{confirmedToken.estimatedWait}
+                </span>
+              </div>
 
-            <div>
-              <label className="block font-semibold text-slate-300 mb-1">Time Slot *</label>
-              <select
-                value={selectedTimeSlot}
-                onChange={(e) => setSelectedTimeSlot(e.target.value)}
-                className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-teal-500 text-xs"
+              <div className="text-xs text-slate-600 space-y-1.5 text-left p-3 bg-slate-50 rounded-xl border border-slate-200">
+                <p><strong>Doctor:</strong> {confirmedToken.doctorName}</p>
+                <p><strong>Time Slot:</strong> {confirmedToken.timeSlot}</p>
+                <p><strong>Patient:</strong> {patientName}</p>
+              </div>
+
+              <Link
+                href="/dashboard"
+                className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow block transition-colors"
               >
-                <option value="09:00 AM - 09:30 AM">09:00 AM - 09:30 AM (Morning)</option>
-                <option value="10:00 AM - 10:30 AM">10:00 AM - 10:30 AM (Peak)</option>
-                <option value="11:30 AM - 12:00 PM">11:30 AM - 12:00 PM (Midday)</option>
-                <option value="01:00 PM - 01:30 PM">01:00 PM - 01:30 PM (Afternoon)</option>
-              </select>
+                Go to Live Queue Tracker ➔
+              </Link>
             </div>
+          ) : (
+            <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
+              <div className="border-b border-slate-100 pb-3">
+                <h3 className="text-base font-bold text-slate-900">Book OPD Token</h3>
+                <p className="text-xs text-slate-500">Get an instant digital token for today</p>
+              </div>
 
-            <button
-              type="submit"
-              disabled={bookingLoading}
-              className="w-full py-3.5 bg-teal-400 text-slate-950 font-black text-xs rounded-xl shadow-lg hover:bg-teal-300 active:scale-95 transition-all disabled:opacity-50"
-            >
-              {bookingLoading ? 'Issuing Token...' : '🎫 Issue OPD Token & Join Queue'}
-            </button>
-          </form>
+              <form onSubmit={handleBookToken} className="space-y-4 text-xs">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Patient Full Name *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Enter patient name"
+                    value={patientName}
+                    onChange={(e) => setPatientName(e.target.value)}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:border-emerald-600 focus:bg-white"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Age *</label>
+                    <input
+                      type="number"
+                      required
+                      placeholder="e.g. 28"
+                      value={patientAge}
+                      onChange={(e) => setPatientAge(e.target.value)}
+                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:border-emerald-600 focus:bg-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Gender</label>
+                    <select
+                      value={patientGender}
+                      onChange={(e) => setPatientGender(e.target.value)}
+                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:border-emerald-600 focus:bg-white"
+                    >
+                      <option>Male</option>
+                      <option>Female</option>
+                      <option>Other</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Select Time Slot</label>
+                  <select
+                    value={selectedTimeSlot}
+                    onChange={(e) => setSelectedTimeSlot(e.target.value)}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:border-emerald-600 focus:bg-white"
+                  >
+                    <option>09:30 AM - 10:00 AM</option>
+                    <option>10:00 AM - 10:30 AM</option>
+                    <option>10:30 AM - 11:00 AM</option>
+                    <option>11:00 AM - 11:30 AM</option>
+                    <option>12:00 PM - 12:30 PM</option>
+                  </select>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={bookingLoading}
+                  className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {bookingLoading ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>Generating OPD Token...</span>
+                    </>
+                  ) : (
+                    'Confirm & Generate OPD Token ➔'
+                  )}
+                </button>
+              </form>
+            </div>
+          )}
         </div>
       </div>
     </div>

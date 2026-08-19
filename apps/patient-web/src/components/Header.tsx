@@ -32,40 +32,55 @@ export default function Header() {
   };
 
   return (
-    <header className="sticky top-0 z-50 backdrop-blur-md bg-slate-900/80 border-b border-slate-800">
+    <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-        <Link href="/" className="flex items-center space-x-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-teal-500 to-emerald-400 flex items-center justify-center font-extrabold text-slate-950 text-xl shadow-lg shadow-teal-500/20">
-            +
+        <Link href="/" className="flex items-center gap-3 group">
+          <div className="w-10 h-10 rounded-xl bg-emerald-600 flex items-center justify-center text-white font-black text-xl shadow-md shadow-emerald-600/20 group-hover:scale-105 transition-transform">
+            🏥
           </div>
-          <span className="text-xl font-bold bg-gradient-to-r from-teal-400 to-emerald-300 bg-clip-text text-transparent">
-            Skip-Q / OnlineAppointment
-          </span>
+          <div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-xl font-extrabold text-slate-900 tracking-tight">Skip-Q</span>
+              <span className="text-[10px] uppercase tracking-wider font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">
+                Healthcare
+              </span>
+            </div>
+            <p className="text-[10px] font-medium text-slate-500 hidden sm:block">
+              Hospital Appointment & Live Token System
+            </p>
+          </div>
         </Link>
 
-        <nav className="flex items-center space-x-6 text-xs font-semibold text-slate-300">
-          <Link href="/" className="hover:text-teal-400 transition-colors">Find Hospitals</Link>
-          <Link href="/dashboard" className="hover:text-teal-400 transition-colors">My Appointments & Queue</Link>
+        <nav className="flex items-center gap-6 text-sm font-semibold text-slate-600">
+          <Link href="/" className="hover:text-emerald-600 transition-colors hidden sm:block">
+            Find Hospitals
+          </Link>
+          <Link href="/dashboard" className="hover:text-emerald-600 transition-colors">
+            My Tokens & Queue
+          </Link>
 
           {user ? (
-            <div className="flex items-center space-x-3">
-              <span className="px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-xl text-teal-400 font-mono text-[11px]">
-                👤 {user.name || user.email || 'Patient'}
+            <div className="flex items-center gap-3">
+              <span className="px-3 py-1.5 bg-slate-100 border border-slate-200 rounded-xl text-slate-800 font-medium text-xs flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                {user.name || user.email || 'Patient'}
               </span>
               <button
                 onClick={handleSignOut}
-                className="px-3 py-1.5 bg-rose-500/10 border border-rose-500/30 text-rose-400 hover:bg-rose-500 hover:text-white font-bold text-xs rounded-xl transition-all"
+                className="px-3 py-1.5 bg-rose-50 border border-rose-200 text-rose-600 hover:bg-rose-100 font-bold text-xs rounded-xl transition-all"
               >
                 Sign Out
               </button>
             </div>
           ) : (
-            <Link
-              href="/auth/login"
-              className="px-4 py-2 bg-teal-500 text-slate-950 font-bold text-xs rounded-xl hover:bg-teal-400 transition-all shadow"
-            >
-              Sign In
-            </Link>
+            <div className="flex items-center gap-2">
+              <Link
+                href="/auth/login"
+                className="px-4 py-2 bg-emerald-600 text-white font-bold text-xs rounded-xl hover:bg-emerald-700 transition-all shadow-sm shadow-emerald-600/20"
+              >
+                Sign In / Register
+              </Link>
+            </div>
           )}
         </nav>
       </div>

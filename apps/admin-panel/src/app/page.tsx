@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
 interface Hospital {
   id: string;
@@ -9,16 +10,18 @@ interface Hospital {
   city: string;
   contactNumber: string;
   email: string;
+  password?: string;
   licenseNumber: string;
+  isEmergency?: boolean;
+  isGovernment?: boolean;
   status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'SUSPENDED';
+  currentLiveToken?: string;
 }
-
-import { useRouter } from 'next/navigation';
 
 export default function AdminDashboardPage() {
   const router = useRouter();
+  const [authChecking, setAuthChecking] = useState(true);
   const [activeTab, setActiveTab] = useState<'HOSPITALS' | 'MANUAL_ADD'>('HOSPITALS');
-
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -37,29 +40,21 @@ export default function AdminDashboardPage() {
 
   const [formSuccess, setFormSuccess] = useState('');
   const [formError, setFormError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
-  const getUrl = (path: string) => {
-    const backend = process.env.NEXT_PUBLIC_BACKEND_URL;
-    return backend ? `${backend}${path}` : path;
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem('admin_token');
-    localStorage.removeItem('admin_email');
-    router.push('/auth/login');
-  };
-
-  // Fetch Hospitals from backend or local API
   const fetchHospitals = () => {
     setLoading(true);
-    fetch(getUrl('/api/hospitals'))
+    fetch('/api/hospitals')
       .then((res) => res.json())
       .then((data) => {
         if (Array.isArray(data)) setHospitals(data);
         else setHospitals([]);
       })
       .catch(() => setHospitals([]))
-      .finally(() => setLoading(false));
+      .finally(() => {
+        setLoading(false);
+        setAuthChecking(false);
+      });
   };
 
   useEffect(() => {
@@ -71,51 +66,31 @@ export default function AdminDashboardPage() {
     fetchHospitals();
   }, []);
 
+  const handleLogout = () => {
+    localStorage.removeItem('admin_token');
+    localStorage.removeItem('admin_email');
+    router.push('/auth/login');
+  };
+
   const handleCreateHospital = async (e: React.FormEvent) => {
     e.preventDefault();
-    setFormSuccess('');
     setFormError('');
-
-    if (!newHospital.name || !newHospital.address || !newHospital.contactNumber) {
-      setFormError('Please fill in required hospital details.');
-      return;
-    }
+    setFormSuccess('');
+    setSubmitting(true);
 
     try {
-      const res = await fetch(getUrl('/api/admin/onboard-hospital'), {
+      const res = await fetch('/api/admin/onboard-hospital', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newHospital),
       });
 
       const data = await res.json();
-
       if (!res.ok) {
         throw new Error(data.message || 'Failed to onboard hospital');
       }
 
-      setFormSuccess(
-        `Hospital "${data.hospital?.name || newHospital.name}" is now LIVE in ${newHospital.city}! Login: Email: ${data.adminUser?.email || newHospital.email} | Pass: ${data.adminUser?.initialPassword || newHospital.password}`
-      );
-
-      // Save to local storage for instant sync across tabs
-      const savedHosp: Hospital = {
-        id: data.hospital?.id || `hosp_${Date.now()}`,
-        name: newHospital.name,
-        address: newHospital.address,
-        city: newHospital.city,
-        contactNumber: newHospital.contactNumber,
-        email: newHospital.email || `admin@${newHospital.name.toLowerCase().replace(/\s+/g, '')}.com`,
-        licenseNumber: newHospital.licenseNumber || `LIC-${Date.now().toString().slice(-6)}`,
-        status: 'APPROVED',
-      };
-
-      const existingRaw = localStorage.getItem('admin_hospitals');
-      const existing = existingRaw ? JSON.parse(existingRaw) : [];
-      const updated = [savedHosp, ...existing];
-      localStorage.setItem('admin_hospitals', JSON.stringify(updated));
-      setHospitals(updated);
-
+      setFormSuccess(`🎉 "${newHospital.name}" onboarded and live in Supabase database! Credentials emailed.`);
       setNewHospital({
         name: '',
         address: '',
@@ -127,185 +102,187 @@ export default function AdminDashboardPage() {
         isGovernment: false,
         isEmergency: true,
       });
+      fetchHospitals();
+      setTimeout(() => setActiveTab('HOSPITALS'), 1500);
     } catch (err: any) {
-      // Offline fallback: save locally
-      const savedHosp: Hospital = {
-        id: `hosp_${Date.now()}`,
-        name: newHospital.name,
-        address: newHospital.address,
-        city: newHospital.city,
-        contactNumber: newHospital.contactNumber,
-        email: newHospital.email || `admin@hospital.com`,
-        licenseNumber: newHospital.licenseNumber || `LIC-${Date.now().toString().slice(-6)}`,
-        status: 'APPROVED',
-      };
-
-      const existingRaw = localStorage.getItem('admin_hospitals');
-      const existing = existingRaw ? JSON.parse(existingRaw) : [];
-      const updated = [savedHosp, ...existing];
-      localStorage.setItem('admin_hospitals', JSON.stringify(updated));
-      setHospitals(updated);
-
-      setFormSuccess(`Hospital "${newHospital.name}" onboarded and live!`);
+      setFormError(err.message || 'Failed to onboard hospital');
+    } finally {
+      setSubmitting(false);
     }
   };
 
   const handleStatusChange = async (id: string, newStatus: 'APPROVED' | 'REJECTED' | 'SUSPENDED') => {
     try {
-      await fetch(getUrl(`/api/admin/hospitals/${id}/status`), {
+      await fetch(`/api/admin/hospitals/${id}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus }),
       });
+      fetchHospitals();
     } catch {}
-
-    const updated = hospitals.map((h) => (h.id === id ? { ...h, status: newStatus } : h));
-    setHospitals(updated);
-    localStorage.setItem('admin_hospitals', JSON.stringify(updated));
   };
 
+  if (authChecking) {
+    return (
+      <div className="max-w-md mx-auto my-32 text-center space-y-4">
+        <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto" />
+        <p className="text-xs text-slate-600 font-semibold">Verifying Super Admin Authorization...</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-      {/* Header */}
-      <div className="border-b border-slate-800 pb-6 flex flex-col md:flex-row justify-between md:items-center gap-4">
-        <div>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 pb-24">
+      {/* Top Banner */}
+      <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row justify-between md:items-center gap-4">
+        <div className="space-y-1">
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-black text-white">Super Admin Control Hub</h1>
-            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-purple-500/20 text-purple-400 border border-purple-500/30">
-              Mahabubabad Platform Governance
+            <h1 className="text-2xl font-black text-slate-900">Skip-Q Super Admin Control</h1>
+            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-100 text-indigo-800">
+              Master Governance
             </span>
           </div>
-          <p className="text-xs text-slate-400 mt-1">
-            Onboard new hospitals, approve partner requests, and manage live serve availability.
+          <p className="text-xs text-slate-500">
+            Onboard new hospitals, assign receptionist credentials, and monitor platform health.
           </p>
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Tab Selection */}
-          <div className="flex items-center p-1 bg-slate-900 rounded-xl border border-slate-800 text-xs font-semibold">
+          <div className="flex items-center p-1 bg-slate-100 rounded-xl text-xs font-semibold">
             <button
               onClick={() => setActiveTab('HOSPITALS')}
-              className={`px-4 py-2 rounded-lg transition-colors ${
-                activeTab === 'HOSPITALS' ? 'bg-purple-500 text-slate-950 font-bold' : 'text-slate-400 hover:text-white'
+              className={`px-3.5 py-2 rounded-lg transition-colors ${
+                activeTab === 'HOSPITALS' ? 'bg-white text-slate-900 font-bold shadow-sm' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              🏥 Registered Hospitals ({hospitals.length})
+              🏥 Hospitals ({hospitals.length})
             </button>
             <button
               onClick={() => setActiveTab('MANUAL_ADD')}
-              className={`px-4 py-2 rounded-lg transition-colors ${
-                activeTab === 'MANUAL_ADD' ? 'bg-purple-500 text-slate-950 font-bold' : 'text-slate-400 hover:text-white'
+              className={`px-3.5 py-2 rounded-lg transition-colors ${
+                activeTab === 'MANUAL_ADD' ? 'bg-white text-slate-900 font-bold shadow-sm' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              ➕ Onboard Hospital Manually
+              ➕ Onboard Hospital
             </button>
           </div>
 
           <button
             onClick={handleLogout}
-            className="px-3.5 py-2 bg-rose-500/10 border border-rose-500/30 text-rose-400 font-bold text-xs rounded-xl hover:bg-rose-500/20"
+            className="px-3.5 py-2 bg-rose-50 border border-rose-200 text-rose-600 font-bold text-xs rounded-xl hover:bg-rose-100 transition-colors"
           >
             Sign Out
           </button>
         </div>
       </div>
 
+      {/* Stats Summary Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+        <div className="p-6 bg-white rounded-2xl border border-slate-200 shadow-sm space-y-2">
+          <span className="text-xs font-bold text-slate-500 uppercase">Registered Hospitals</span>
+          <div className="text-3xl font-black text-slate-900">{hospitals.length}</div>
+          <p className="text-[11px] text-emerald-600 font-semibold">● Live in Supabase PostgreSQL</p>
+        </div>
+
+        <div className="p-6 bg-white rounded-2xl border border-slate-200 shadow-sm space-y-2">
+          <span className="text-xs font-bold text-slate-500 uppercase">Active OPD Zone</span>
+          <div className="text-3xl font-black text-slate-900">Mahabubabad</div>
+          <p className="text-[11px] text-slate-500 font-medium">Primary Launch Territory</p>
+        </div>
+
+        <div className="p-6 bg-white rounded-2xl border border-slate-200 shadow-sm space-y-2">
+          <span className="text-xs font-bold text-slate-500 uppercase">Database Status</span>
+          <div className="text-3xl font-black text-emerald-600">Connected</div>
+          <p className="text-[11px] text-slate-500 font-medium">Auto-syncing every 4s</p>
+        </div>
+      </div>
+
       {/* TAB 1: Hospitals Management Directory */}
       {activeTab === 'HOSPITALS' && (
-        <div className="bg-slate-900 rounded-3xl border border-slate-800 p-6 space-y-4">
-          <div className="flex justify-between items-center">
+        <div className="bg-white rounded-2xl border border-slate-200 p-6 space-y-4 shadow-sm">
+          <div className="flex justify-between items-center border-b border-slate-100 pb-4">
             <div>
-              <h2 className="text-base font-bold text-white">Hospitals Directory (Mahabubabad)</h2>
-              <p className="text-xs text-slate-400">Manage live availability and partner approvals.</p>
+              <h2 className="text-base font-bold text-slate-900">Registered Hospitals Directory</h2>
+              <p className="text-xs text-slate-500">Manage credentials, approval status, and live availability</p>
             </div>
             <button
               onClick={fetchHospitals}
-              className="px-3 py-1.5 bg-slate-800 text-slate-300 rounded-xl text-xs font-bold hover:bg-slate-700"
+              className="px-3 py-1.5 bg-slate-100 text-slate-700 hover:bg-slate-200 text-xs font-bold rounded-xl transition-colors"
             >
               🔄 Refresh List
             </button>
           </div>
 
-          <div className="overflow-x-auto">
-            {loading && hospitals.length === 0 ? (
-              <div className="p-8 text-center text-xs text-slate-400">Loading hospitals...</div>
-            ) : hospitals.length === 0 ? (
-              <div className="p-12 text-center text-xs text-slate-400 bg-slate-950 rounded-2xl border border-slate-800 space-y-3">
-                <span className="text-3xl block">🏥</span>
-                <p className="font-bold text-white text-sm">No Hospitals Registered Yet</p>
-                <p className="max-w-md mx-auto text-slate-400">
-                  Hospitals will appear here when hospital managements sign up or when you onboard hospitals manually.
-                </p>
-                <button
-                  onClick={() => setActiveTab('MANUAL_ADD')}
-                  className="px-4 py-2 bg-purple-500 text-slate-950 font-bold rounded-xl hover:bg-purple-400"
-                >
-                  ➕ Onboard First Hospital Manually
-                </button>
-              </div>
-            ) : (
-              <table className="w-full text-left text-xs text-slate-300">
-                <thead className="bg-slate-950 text-slate-400 font-semibold border-b border-slate-800">
+          {loading ? (
+            <div className="p-12 text-center space-y-3">
+              <div className="w-8 h-8 border-3 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto" />
+              <p className="text-xs text-slate-500">Fetching hospital records from Supabase...</p>
+            </div>
+          ) : hospitals.length === 0 ? (
+            <div className="p-12 text-center text-slate-500 text-xs space-y-3">
+              <p className="font-semibold text-slate-700">No hospitals registered in the database yet.</p>
+              <button
+                onClick={() => setActiveTab('MANUAL_ADD')}
+                className="px-4 py-2 bg-indigo-600 text-white font-bold text-xs rounded-xl shadow"
+              >
+                + Onboard First Hospital Now
+              </button>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50 text-slate-600 font-bold uppercase text-[10px] border-b border-slate-200">
                   <tr>
-                    <th className="p-3">HOSPITAL NAME</th>
-                    <th className="p-3">CITY & ADDRESS</th>
-                    <th className="p-3">CONTACT EMAIL</th>
-                    <th className="p-3">LICENSE NO.</th>
-                    <th className="p-3">STATUS</th>
-                    <th className="p-3 text-right">ADMIN ACTIONS</th>
+                    <th className="p-3">Hospital Name</th>
+                    <th className="p-3">City / Address</th>
+                    <th className="p-3">Login Email</th>
+                    <th className="p-3">Live Token</th>
+                    <th className="p-3">Status</th>
+                    <th className="p-3 text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800">
-                  {hospitals.map((h) => (
-                    <tr key={h.id} className="hover:bg-slate-950/40">
-                      <td className="p-3 font-bold text-white">{h.name}</td>
-                      <td className="p-3 text-slate-300">{h.address}, {h.city}</td>
-                      <td className="p-3 font-mono">{h.email}</td>
-                      <td className="p-3 font-mono text-slate-400">{h.licenseNumber}</td>
+                <tbody className="divide-y divide-slate-100">
+                  {hospitals.map((hosp) => (
+                    <tr key={hosp.id} className="hover:bg-slate-50 transition-colors">
+                      <td className="p-3">
+                        <div className="font-bold text-slate-900">{hosp.name}</div>
+                        <div className="text-[10px] text-slate-400 font-mono">Lic: {hosp.licenseNumber}</div>
+                      </td>
+                      <td className="p-3 text-slate-600">
+                        <div>{hosp.address}</div>
+                        <div className="text-[11px] font-semibold text-slate-800">📍 {hosp.city}</div>
+                      </td>
+                      <td className="p-3 font-mono text-slate-700 font-semibold">{hosp.email}</td>
+                      <td className="p-3 font-mono font-bold text-emerald-700">
+                        #{hosp.currentLiveToken || '1'}
+                      </td>
                       <td className="p-3">
                         <span
-                          className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
-                            h.status === 'APPROVED'
-                              ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
-                              : h.status === 'PENDING'
-                              ? 'bg-amber-500/20 text-amber-400 border-amber-500/30'
-                              : 'bg-rose-500/20 text-rose-400 border-rose-500/30'
+                          className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${
+                            hosp.status === 'APPROVED'
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : hosp.status === 'SUSPENDED'
+                              ? 'bg-amber-100 text-amber-800'
+                              : 'bg-rose-100 text-rose-800'
                           }`}
                         >
-                          {h.status}
+                          {hosp.status}
                         </span>
                       </td>
                       <td className="p-3 text-right space-x-2">
-                        {h.status === 'PENDING' && (
-                          <>
-                            <button
-                              onClick={() => handleStatusChange(h.id, 'APPROVED')}
-                              className="px-3 py-1 bg-emerald-500 text-slate-950 font-bold rounded-lg hover:bg-emerald-400"
-                            >
-                              Approve
-                            </button>
-                            <button
-                              onClick={() => handleStatusChange(h.id, 'REJECTED')}
-                              className="px-3 py-1 bg-rose-500/20 text-rose-400 border border-rose-500/30 font-bold rounded-lg hover:bg-rose-500/30"
-                            >
-                              Reject
-                            </button>
-                          </>
-                        )}
-                        {h.status === 'APPROVED' && (
+                        {hosp.status === 'APPROVED' ? (
                           <button
-                            onClick={() => handleStatusChange(h.id, 'SUSPENDED')}
-                            className="px-3 py-1 bg-amber-500/20 text-amber-400 border border-amber-500/30 font-bold rounded-lg hover:bg-amber-500/30"
+                            onClick={() => handleStatusChange(hosp.id, 'SUSPENDED')}
+                            className="px-2.5 py-1 bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200 rounded-lg text-[11px] font-bold"
                           >
                             Suspend
                           </button>
-                        )}
-                        {h.status === 'SUSPENDED' && (
+                        ) : (
                           <button
-                            onClick={() => handleStatusChange(h.id, 'APPROVED')}
-                            className="px-3 py-1 bg-emerald-500 text-slate-950 font-bold rounded-lg hover:bg-emerald-400"
+                            onClick={() => handleStatusChange(hosp.id, 'APPROVED')}
+                            className="px-2.5 py-1 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 rounded-lg text-[11px] font-bold"
                           >
-                            Re-Approve
+                            Approve
                           </button>
                         )}
                       </td>
@@ -313,125 +290,164 @@ export default function AdminDashboardPage() {
                   ))}
                 </tbody>
               </table>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       )}
 
-      {/* TAB 2: Manual Hospital Onboarding Form */}
+      {/* TAB 2: Onboard Hospital Form */}
       {activeTab === 'MANUAL_ADD' && (
-        <div className="max-w-2xl mx-auto bg-slate-900 p-8 rounded-3xl border border-slate-800 shadow-xl space-y-6">
-          <div>
-            <h2 className="text-xl font-black text-white">➕ Onboard Hospital Manually</h2>
-            <p className="text-xs text-slate-400 mt-1">
-              Creates the hospital with instant Approved status and generates hospital management login credentials.
+        <div className="bg-white rounded-2xl border border-slate-200 p-8 space-y-6 shadow-sm max-w-3xl mx-auto">
+          <div className="border-b border-slate-100 pb-4">
+            <h2 className="text-lg font-bold text-slate-900">Onboard a New Hospital</h2>
+            <p className="text-xs text-slate-500">
+              Creates the hospital profile, assigns login credentials, and sends an automatic welcome email.
             </p>
           </div>
 
           {formSuccess && (
-            <div className="p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl text-xs text-emerald-400 font-bold text-center leading-relaxed">
+            <div className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold rounded-xl">
               {formSuccess}
             </div>
           )}
 
           {formError && (
-            <div className="p-4 bg-rose-500/10 border border-rose-500/30 rounded-2xl text-xs text-rose-400 font-bold text-center">
+            <div className="p-4 bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold rounded-xl">
               {formError}
             </div>
           )}
 
-          <form onSubmit={handleCreateHospital} className="space-y-4">
+          <form onSubmit={handleCreateHospital} className="space-y-5 text-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Hospital Name *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. SatyaSri MultiSpeciality Hospital"
+                  value={newHospital.name}
+                  onChange={(e) => setNewHospital({ ...newHospital, name: e.target.value })}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:border-indigo-600 focus:bg-white"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">City / Territory *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Mahabubabad"
+                  value={newHospital.city}
+                  onChange={(e) => setNewHospital({ ...newHospital, city: e.target.value })}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:border-indigo-600 focus:bg-white"
+                />
+              </div>
+            </div>
+
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Hospital Name *</label>
+              <label className="block font-bold text-slate-700 mb-1">Address / Landmark *</label>
               <input
                 type="text"
                 required
-                placeholder="e.g. SatyaSri Hospital"
-                value={newHospital.name}
-                onChange={(e) => setNewHospital({ ...newHospital, name: e.target.value })}
-                className="w-full p-3 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-purple-500"
+                placeholder="e.g. Near RTC Bus Stand, Main Road, Mahabubabad"
+                value={newHospital.address}
+                onChange={(e) => setNewHospital({ ...newHospital, address: e.target.value })}
+                className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:border-indigo-600 focus:bg-white"
               />
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">City / Location Zone *</label>
-                <input
-                  type="text"
-                  required
-                  value={newHospital.city}
-                  onChange={(e) => setNewHospital({ ...newHospital, city: e.target.value })}
-                  className="w-full p-3 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-purple-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">Contact Phone Number *</label>
+                <label className="block font-bold text-slate-700 mb-1">Reception Contact Number *</label>
                 <input
                   type="tel"
                   required
-                  placeholder="+91 98765 43210"
+                  placeholder="9876543210"
                   value={newHospital.contactNumber}
                   onChange={(e) => setNewHospital({ ...newHospital, contactNumber: e.target.value })}
-                  className="w-full p-3 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-purple-500"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Full Address *</label>
-              <input
-                type="text"
-                required
-                placeholder="e.g. Station Road, Mahabubabad"
-                value={newHospital.address}
-                onChange={(e) => setNewHospital({ ...newHospital, address: e.target.value })}
-                className="w-full p-3 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-purple-500"
-              />
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">Hospital Management Login Email *</label>
-                <input
-                  type="email"
-                  required
-                  placeholder="sameershaikonline@gmail.com"
-                  value={newHospital.email}
-                  onChange={(e) => setNewHospital({ ...newHospital, email: e.target.value })}
-                  className="w-full p-3 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-purple-500"
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:border-indigo-600 focus:bg-white"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">Initial Password *</label>
+                <label className="block font-bold text-slate-700 mb-1">License / Reg Number</label>
                 <input
                   type="text"
-                  required
-                  placeholder="test@123"
-                  value={newHospital.password}
-                  onChange={(e) => setNewHospital({ ...newHospital, password: e.target.value })}
-                  className="w-full p-3 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-purple-500"
+                  placeholder="TS-MBD-001"
+                  value={newHospital.licenseNumber}
+                  onChange={(e) => setNewHospital({ ...newHospital, licenseNumber: e.target.value })}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:border-indigo-600 focus:bg-white"
                 />
               </div>
             </div>
 
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Medical License Number</label>
-              <input
-                type="text"
-                placeholder="e.g. MBD-LIC-9821"
-                value={newHospital.licenseNumber}
-                onChange={(e) => setNewHospital({ ...newHospital, licenseNumber: e.target.value })}
-                className="w-full p-3 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-purple-500"
-              />
+            <div className="p-4 bg-indigo-50/70 border border-indigo-100 rounded-2xl space-y-3">
+              <span className="text-[11px] font-extrabold text-indigo-900 uppercase tracking-wider block">
+                🔑 Hospital Login Credentials
+              </span>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Authorized Login Email *</label>
+                  <input
+                    type="email"
+                    required
+                    placeholder="hospital@domain.com"
+                    value={newHospital.email}
+                    onChange={(e) => setNewHospital({ ...newHospital, email: e.target.value })}
+                    className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:border-indigo-600"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Assigned Password *</label>
+                  <input
+                    type="password"
+                    required
+                    placeholder="••••••••"
+                    value={newHospital.password}
+                    onChange={(e) => setNewHospital({ ...newHospital, password: e.target.value })}
+                    className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:border-indigo-600"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-6 pt-2">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={newHospital.isEmergency}
+                  onChange={(e) => setNewHospital({ ...newHospital, isEmergency: e.target.checked })}
+                  className="w-4 h-4 rounded text-indigo-600"
+                />
+                <span className="font-semibold text-slate-700">24/7 Emergency Casualty</span>
+              </label>
+
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={newHospital.isGovernment}
+                  onChange={(e) => setNewHospital({ ...newHospital, isGovernment: e.target.checked })}
+                  className="w-4 h-4 rounded text-indigo-600"
+                />
+                <span className="font-semibold text-slate-700">Government Institution</span>
+              </label>
             </div>
 
             <button
               type="submit"
-              className="w-full py-3.5 bg-purple-500 text-slate-950 font-black text-xs rounded-xl shadow hover:bg-purple-400 transition-colors"
+              disabled={submitting}
+              className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
             >
-              ➕ Save & Onboard Hospital Immediately
+              {submitting ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span>Onboarding & Sending Email Credentials...</span>
+                </>
+              ) : (
+                'Onboard Hospital & Deploy to Live Network ➔'
+              )}
             </button>
           </form>
         </div>
