@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = "file:./dev.db"
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model User {
@@ -48,6 +49,7 @@ model Hospital {
   description   String?
   contactNumber String
   email         String
+  password      String?
   website       String?
   licenseNumber String          @unique
   openHours     String          @default("24/7")
@@ -107,6 +109,8 @@ model Doctor {
   rating         Float     @default(4.8)
   isAvailable    Boolean   @default(true)
   languages      String    @default("English, Telugu")
+  roomNo         String    @default("OPD Room 1")
+  availableTime  String    @default("09:00 AM - 02:00 PM")
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 

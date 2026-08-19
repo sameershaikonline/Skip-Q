@@ -1,13 +1,31 @@
 import { NextResponse } from 'next/server';
-import { fetchAllHospitals } from '@/lib/cloudStore';
+import { prisma } from '@healthcare/database';
+
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  const list = await fetchAllHospitals();
-  return NextResponse.json(list, {
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, PATCH, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    },
-  });
+  try {
+    const hospitals = await prisma.hospital.findMany({
+      orderBy: { createdAt: 'desc' },
+      include: {
+        departments: true,
+        doctors: {
+          include: {
+            user: { select: { name: true, email: true, phone: true } },
+          },
+        },
+      },
+    });
+
+    return NextResponse.json(hospitals, {
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, PATCH, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      },
+    });
+  } catch (err: any) {
+    console.error('Error fetching hospitals from Supabase:', err);
+    return NextResponse.json([], { status: 500 });
+  }
 }

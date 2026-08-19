@@ -1,18 +1,34 @@
 import { NextResponse } from 'next/server';
+import { prisma } from '@healthcare/database';
 
-const CLOUD_OBJECT_URL = 'https://api.restful-api.dev/objects/ff8081819ff5b11001a015cc0e0c4578';
+export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
   try {
-    const res = await fetch(CLOUD_OBJECT_URL, { cache: 'no-store' });
-    if (res.ok) {
-      const data = await res.json();
-      if (data?.data?.hospitals && Array.isArray(data.data.hospitals)) {
-        const found = data.data.hospitals.find((h: any) => h.id === params.id);
-        if (found) return NextResponse.json(found);
-      }
-    }
-  } catch {}
+    const hospital = await prisma.hospital.findUnique({
+      where: { id: params.id },
+      include: {
+        departments: true,
+        doctors: {
+          include: {
+            user: { select: { name: true, email: true, phone: true } },
+          },
+        },
+      },
+    });
 
-  return NextResponse.json({ message: 'Hospital not found' }, { status: 404 });
+    if (!hospital) {
+      return NextResponse.json({ message: 'Hospital not found' }, { status: 404 });
+    }
+
+    return NextResponse.json(hospital, {
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      },
+    });
+  } catch (err: any) {
+    return NextResponse.json({ message: 'Database error' }, { status: 500 });
+  }
 }

@@ -1,18 +1,18 @@
 import { NextResponse } from 'next/server';
-import { getAdminHospitals } from '@/lib/store';
+import { prisma } from '@healthcare/database';
+
+export const dynamic = 'force-dynamic';
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
   try {
     const { status } = await req.json();
-    const store = getAdminHospitals();
-    const hosp = store.get(params.id);
 
-    if (hosp) {
-      hosp.status = status;
-      store.set(params.id, hosp);
-    }
+    const hospital = await prisma.hospital.update({
+      where: { id: params.id },
+      data: { status },
+    });
 
-    return NextResponse.json({ message: 'Status updated', hospital: hosp }, {
+    return NextResponse.json({ message: 'Status updated', hospital }, {
       headers: {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'GET, POST, PATCH, OPTIONS',

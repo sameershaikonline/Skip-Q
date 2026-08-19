@@ -1,17 +1,32 @@
 import { NextResponse } from 'next/server';
+import { prisma } from '@healthcare/database';
 
-const CLOUD_OBJECT_URL = 'https://api.restful-api.dev/objects/ff8081819ff5b11001a015cc0e0c4578';
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    const res = await fetch(CLOUD_OBJECT_URL, { cache: 'no-store' });
-    if (res.ok) {
-      const data = await res.json();
-      if (data?.data?.hospitals && Array.isArray(data.data.hospitals)) {
-        return NextResponse.json(data.data.hospitals);
-      }
-    }
-  } catch {}
+    const hospitals = await prisma.hospital.findMany({
+      where: { status: 'APPROVED' },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        departments: true,
+        doctors: {
+          include: {
+            user: { select: { name: true, email: true, phone: true } },
+          },
+        },
+      },
+    });
 
-  return NextResponse.json([]);
+    return NextResponse.json(hospitals, {
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      },
+    });
+  } catch (err: any) {
+    console.error('Error fetching approved hospitals from Supabase:', err);
+    return NextResponse.json([], { status: 500 });
+  }
 }
