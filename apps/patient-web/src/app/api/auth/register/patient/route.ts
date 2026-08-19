@@ -33,7 +33,7 @@ export async function POST(req: Request) {
       const htmlContent = `
         <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 24px; background-color: #0f172a; color: #f8fafc; border-radius: 20px;">
           <div style="text-align: center; padding-bottom: 20px; border-bottom: 1px solid #334155;">
-            <h2 style="color: #14b8a6; margin: 0; font-size: 24px;">SkipQ • Hospital Queue Platform</h2>
+            <h2 style="color: #14b8a6; margin: 0; font-size: 24px;">Skip-Q • Hospital Queue Platform</h2>
             <p style="color: #94a3b8; font-size: 12px; margin-top: 4px;">Official Account Verification Code</p>
           </div>
           <div style="padding: 24px 0; text-align: center;">
@@ -48,9 +48,9 @@ export async function POST(req: Request) {
       `;
 
       await transporter.sendMail({
-        from: `"SkipQ Security" <${smtpUser}>`,
+        from: `"Skip-Q Security" <${smtpUser}>`,
         to: cleanEmail,
-        subject: `Your SkipQ Verification Code: ${otp}`,
+        subject: `Your Skip-Q Verification Code: ${otp}`,
         html: htmlContent,
       });
 

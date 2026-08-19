@@ -3,7 +3,7 @@ import React from 'react';
 import Link from 'next/link';
 
 export const metadata = {
-  title: 'SkipQ | Super Admin Control Center',
+  title: 'Skip-Q | Super Admin Control Center',
   description: 'Super Admin Management System for platform governance, hospital onboarding, and queue oversight.',
 };
 
@@ -18,7 +18,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 👑
               </div>
               <div>
-                <span className="font-bold text-base text-white">SkipQ Super Admin Control</span>
+                <span className="font-bold text-base text-white">Skip-Q Super Admin Control</span>
                 <span className="hidden sm:inline-block ml-2 text-[10px] bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded-full border border-purple-500/30">
                   Governance
                 </span>
@@ -54,7 +54,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <footer className="border-t border-slate-800 bg-slate-900/60 py-6 text-xs text-slate-400">
           <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row justify-between items-center gap-4">
             <div>
-              <p className="font-semibold text-slate-300">SkipQ Governance Console</p>
+              <p className="font-semibold text-slate-300">Skip-Q Governance Console</p>
               <p className="text-[11px] text-slate-500">Platform-wide Hospital Verification & Queue Oversight</p>
             </div>
             <div className="flex items-center space-x-4 text-[11px]">

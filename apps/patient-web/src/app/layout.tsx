@@ -3,7 +3,7 @@ import React from 'react';
 import Header from '@/components/Header';
 
 export const metadata = {
-  title: 'SkipQ | Hospital Appointments & Token System',
+  title: 'Skip-Q | Hospital Appointments & Token System',
   description: 'Book hospital appointments, receive digital queue tokens, and access medical consultations.',
 };
 
@@ -20,7 +20,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <footer className="border-t border-slate-800 bg-slate-900/60 py-8 text-xs text-slate-400">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row justify-between items-center gap-4">
             <div>
-              <p className="font-semibold text-slate-300">SkipQ Healthcare Ecosystem</p>
+              <p className="font-semibold text-slate-300">Skip-Q Healthcare Ecosystem</p>
               <p className="text-[11px] text-slate-500">Official Healthcare Token & Appointment Booking System</p>
             </div>
             <div className="flex items-center space-x-6 text-[11px]">

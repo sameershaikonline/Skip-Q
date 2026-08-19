@@ -22,10 +22,10 @@ export async function POST(req: Request) {
       });
 
       await transporter.sendMail({
-        from: `"SkipQ Healthcare" <${smtpUser}>`,
+        from: `"Skip-Q Healthcare" <${smtpUser}>`,
         to: email,
-        subject: `Your SkipQ Verification OTP: ${otp}`,
-        text: `Your OTP is: ${otp}`,
+        subject: `Your Skip-Q Verification OTP: ${otp}`,
+        text: `Your Skip-Q verification OTP is: ${otp}. It expires in 10 minutes.`,
       });
     }
 

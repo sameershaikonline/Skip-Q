@@ -39,7 +39,7 @@ export default function Header() {
             +
           </div>
           <span className="text-xl font-bold bg-gradient-to-r from-teal-400 to-emerald-300 bg-clip-text text-transparent">
-            SkipQ / OnlineAppointment
+            Skip-Q / OnlineAppointment
           </span>
         </Link>
 

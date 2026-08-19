@@ -161,7 +161,7 @@ export default function PatientHomePage() {
               We're currently not live in {selectedLocation}
             </h3>
             <p className="text-xs text-slate-300 max-w-lg mx-auto leading-relaxed">
-              Currently, SkipQ serves live OPD token management in <strong className="text-white">Mahabubabad</strong>.
+              Currently, Skip-Q serves live OPD token management in <strong className="text-white">Mahabubabad</strong>.
             </p>
             <button
               onClick={() => setSelectedLocation('Mahabubabad')}

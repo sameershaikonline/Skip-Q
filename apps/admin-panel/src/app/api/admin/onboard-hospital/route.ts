@@ -142,12 +142,12 @@ export async function POST(req: Request) {
         const htmlEmail = `
           <div style="font-family: Arial, sans-serif; max-width: 550px; margin: 0 auto; padding: 24px; background-color: #0f172a; color: #f8fafc; border-radius: 20px;">
             <div style="text-align: center; padding-bottom: 20px; border-bottom: 1px solid #334155;">
-              <h2 style="color: #6366f1; margin: 0; font-size: 24px;">🏢 SkipQ Hospital Management Portal</h2>
+              <h2 style="color: #6366f1; margin: 0; font-size: 24px;">🏢 Skip-Q Hospital Management Portal</h2>
               <p style="color: #94a3b8; font-size: 12px; margin-top: 4px;">Hospital Partner Access Authorization</p>
             </div>
             <div style="padding: 24px 0;">
               <p style="font-size: 14px; color: #cbd5e1;">Welcome, <strong>${data.name}</strong> Team!</p>
-              <p style="font-size: 13px; color: #94a3b8;">Your hospital has been verified and onboarded by Super Admin to the <strong>SkipQ OPD Queue System</strong> in ${data.city || 'Mahabubabad'}.</p>
+              <p style="font-size: 13px; color: #94a3b8;">Your hospital has been verified and onboarded by Super Admin to the <strong>Skip-Q OPD Queue System</strong> in ${data.city || 'Mahabubabad'}.</p>
               
               <div style="background-color: #1e293b; padding: 20px; border-radius: 14px; margin: 20px 0; border: 1px solid #3b82f6;">
                 <p style="margin: 0 0 10px 0; color: #93c5fd; font-weight: bold; font-size: 13px;">YOUR HOSPITAL PORTAL CREDENTIALS:</p>
@@ -161,15 +161,15 @@ export async function POST(req: Request) {
               </p>
             </div>
             <div style="border-top: 1px solid #334155; padding-top: 16px; text-align: center; font-size: 11px; color: #64748b;">
-              SkipQ Healthcare Platform • Super Admin Governance Hub
+              Skip-Q Healthcare Platform • Super Admin Governance Hub
             </div>
           </div>
         `;
 
         await transporter.sendMail({
-          from: `"SkipQ Admin" <${smtpUser}>`,
+          from: `"Skip-Q Admin" <${smtpUser}>`,
           to: cleanEmail,
-          subject: `🎉 ${data.name} is Approved on SkipQ! Login Credentials Inside`,
+          subject: `🎉 ${data.name} is Approved on Skip-Q! Login Credentials Inside`,
           html: htmlEmail,
         });
       } catch (mailErr) {
