@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: Request) {
   try {
     const { email, otp } = await req.json();
@@ -11,7 +13,7 @@ export async function POST(req: Request) {
     const cleanEmail = email.trim().toLowerCase();
     const cleanOtp = otp.trim();
 
-    const store: Map<string, { otp: string; name: string; expiresAt: number }> =
+    const store: Map<string, { otp: string; name: string; phone?: string; expiresAt: number }> =
       (global as any).__OTP_STORE__ || new Map();
 
     const storedData = store.get(cleanEmail);
@@ -23,33 +25,29 @@ export async function POST(req: Request) {
       );
     }
 
-    // Check expiry (10 mins)
     if (Date.now() > storedData.expiresAt) {
       store.delete(cleanEmail);
       return NextResponse.json(
-        { message: 'This OTP has expired. Please request a new OTP code.' },
+        { message: 'This OTP code has expired. Please request a new OTP code.' },
         { status: 400 }
       );
     }
 
-    // STRICT CHECK: Must match the exact generated OTP
     if (storedData.otp !== cleanOtp) {
       return NextResponse.json(
-        { message: 'Incorrect OTP code! Please enter the exact 6-digit code sent to your email.' },
+        { message: 'Incorrect verification OTP. Please enter the exact 6 digits.' },
         { status: 400 }
       );
     }
 
-    // Valid OTP — consume it so it cannot be reused
-    const name = storedData.name || 'Patient';
-    store.delete(cleanEmail);
-
-    const token = `jwt_${Date.now()}_${Math.random().toString(36).substring(2)}`;
+    const { name, phone } = storedData;
 
     return NextResponse.json({
-      message: 'Email verified successfully!',
-      user: { id: `user_${Date.now()}`, name, email: cleanEmail, role: 'PATIENT' },
-      token,
+      verified: true,
+      message: 'OTP verified successfully! Please set your secure password.',
+      email: cleanEmail,
+      name,
+      phone,
     });
   } catch (err: any) {
     return NextResponse.json({ message: err.message || 'Verification failed.' }, { status: 500 });

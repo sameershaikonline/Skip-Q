@@ -2,8 +2,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { Building2 } from 'lucide-react';
+import { Building2, Mail, Lock } from 'lucide-react';
 
 export default function HospitalLoginPage() {
   const router = useRouter();
@@ -30,7 +29,7 @@ export default function HospitalLoginPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.message || 'Authentication failed. Check credentials with Super Admin.');
+        throw new Error(data.message || 'Authentication failed. Please verify credentials with Super Admin.');
       }
 
       if (data.token) {
@@ -56,7 +55,7 @@ export default function HospitalLoginPage() {
 
         <div className="space-y-1">
           <h1 className="text-3xl font-black text-slate-900 dark:text-white">Hospital Sign In</h1>
-          <p className="text-xs text-slate-500 font-medium">Access your reception desk queue controller</p>
+          <p className="text-xs text-slate-500 font-medium">Access reception desk live queue controller</p>
         </div>
 
         {error && (
@@ -68,26 +67,32 @@ export default function HospitalLoginPage() {
         <form onSubmit={handleLogin} className="space-y-4 text-xs font-bold text-left">
           <div>
             <label className="block text-slate-700 dark:text-slate-300 mb-1">Authorized Email</label>
-            <input
-              type="email"
-              required
-              placeholder="sameershaikonline@gmail.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full p-4 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-2xl text-sm font-medium outline-none focus:border-blue-500 transition-all text-slate-900 dark:text-white"
-            />
+            <div className="flex items-center p-3.5 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-2xl focus-within:border-blue-500 transition-all">
+              <Mail className="w-4 h-4 text-slate-400 mr-2 shrink-0" />
+              <input
+                type="email"
+                required
+                placeholder="Enter hospital reception email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full bg-transparent text-sm font-medium outline-none text-slate-900 dark:text-white placeholder-slate-400"
+              />
+            </div>
           </div>
 
           <div>
             <label className="block text-slate-700 dark:text-slate-300 mb-1">Password</label>
-            <input
-              type="password"
-              required
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full p-4 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-2xl text-sm font-medium outline-none focus:border-blue-500 transition-all text-slate-900 dark:text-white"
-            />
+            <div className="flex items-center p-3.5 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-2xl focus-within:border-blue-500 transition-all">
+              <Lock className="w-4 h-4 text-slate-400 mr-2 shrink-0" />
+              <input
+                type="password"
+                required
+                placeholder="Enter hospital password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full bg-transparent text-sm font-medium outline-none text-slate-900 dark:text-white placeholder-slate-400"
+              />
+            </div>
           </div>
 
           <button

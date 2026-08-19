@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Shield } from 'lucide-react';
+import { Shield, Mail, Lock } from 'lucide-react';
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -61,27 +61,33 @@ export default function AdminLoginPage() {
 
         <form onSubmit={handleLogin} className="space-y-4 text-xs font-bold text-left">
           <div>
-            <label className="block text-slate-700 dark:text-slate-300 mb-1">Master Email</label>
-            <input
-              type="email"
-              required
-              placeholder="sameershaikonline@gmail.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full p-4 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-2xl text-sm font-medium outline-none focus:border-blue-500 transition-all text-slate-900 dark:text-white"
-            />
+            <label className="block text-slate-700 dark:text-slate-300 mb-1">Master Admin Email</label>
+            <div className="flex items-center p-3.5 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-2xl focus-within:border-blue-500 transition-all">
+              <Mail className="w-4 h-4 text-slate-400 mr-2 shrink-0" />
+              <input
+                type="email"
+                required
+                placeholder="Enter master admin email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full bg-transparent text-sm font-medium outline-none text-slate-900 dark:text-white placeholder-slate-400"
+              />
+            </div>
           </div>
 
           <div>
-            <label className="block text-slate-700 dark:text-slate-300 mb-1">Password</label>
-            <input
-              type="password"
-              required
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full p-4 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-2xl text-sm font-medium outline-none focus:border-blue-500 transition-all text-slate-900 dark:text-white"
-            />
+            <label className="block text-slate-700 dark:text-slate-300 mb-1">Master Password</label>
+            <div className="flex items-center p-3.5 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-2xl focus-within:border-blue-500 transition-all">
+              <Lock className="w-4 h-4 text-slate-400 mr-2 shrink-0" />
+              <input
+                type="password"
+                required
+                placeholder="Enter master password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full bg-transparent text-sm font-medium outline-none text-slate-900 dark:text-white placeholder-slate-400"
+              />
+            </div>
           </div>
 
           <button
